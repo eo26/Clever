@@ -29,11 +29,11 @@
     - [x] Implement configurable timeouts and a simple retry mechanism for 5xx errors.
 - [x] **Task: Conductor - User Manual Verification 'Phase 3: Error Handling' (Protocol in workflow.md)** d11bc62
 
-## Phase 4: Refactoring and Integration
+## Phase 4: Refactoring and Integration [checkpoint: 6e24ce6]
 - [x] **Task: Refactor existing clever.py to use CanvasClient.** 120f8e3
-    - [ ] Replace hardcoded API calls in `clever.py` with `CanvasClient` method calls.
-    - [ ] Verify that current student info and course data are still correctly printed/processed.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 4: Integration' (Protocol in workflow.md)**
+    - [x] Replace hardcoded API calls in `clever.py` with `CanvasClient` method calls.
+    - [x] Verify that current student info and course data are still correctly printed/processed.
+- [x] **Task: Conductor - User Manual Verification 'Phase 4: Integration' (Protocol in workflow.md)** 6e24ce6
 
 ## Phase 5: Documentation and Cleanup
 - [ ] **Task: Complete Docstrings and Final Cleanup.**
