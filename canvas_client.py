@@ -102,3 +102,29 @@ class CanvasClient:
             list: The list of courses.
         """
         return self._get_all("api/v1/courses", params=params)
+
+    def get_enrollments(self, course_id, params=None):
+        """
+        Retrieve the list of enrollments for a specific course.
+
+        Args:
+            course_id (str|int): The ID of the course.
+            params (dict, optional): Query parameters.
+
+        Returns:
+            list: The list of enrollments.
+        """
+        return self._get_all(f"api/v1/courses/{course_id}/enrollments", params=params)
+
+    def get_assignments(self, course_id, params=None):
+        """
+        Retrieve the list of assignments for a specific course.
+
+        Args:
+            course_id (str|int): The ID of the course.
+            params (dict, optional): Query parameters.
+
+        Returns:
+            list: The list of assignments.
+        """
+        return self._get_all(f"api/v1/courses/{course_id}/assignments", params=params)
