@@ -1,6 +1,7 @@
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from typing import List, Dict, Any, Optional, Union
 
 class CanvasAPIError(Exception):
     """Base exception for Canvas API errors."""
@@ -22,7 +23,7 @@ class CanvasClient:
     """
     A robust client for interacting with the Canvas LMS API.
     """
-    def __init__(self, base_url, access_token, timeout=10, retries=3):
+    def __init__(self, base_url: str, access_token: str, timeout: int = 10, retries: int = 3):
         """
         Initialize the CanvasClient.
 
@@ -30,7 +31,7 @@ class CanvasClient:
             base_url (str): The base URL of the Canvas instance.
             access_token (str): The developer access token for authentication.
             timeout (int, optional): Request timeout in seconds. Defaults to 10.
-            retries (int, optional): Number of retries for 5xx errors. Defaults to 3.
+            retries (int, optional): Number of retries for 429 and 5xx errors. Defaults to 3.
         """
         if not base_url:
             raise ValueError("base_url is required")
@@ -44,7 +45,7 @@ class CanvasClient:
         self.session = requests.Session()
         self.session.headers.update({"Authorization": f"Bearer {self.access_token}"})
         
-        # Setup retry strategy
+        # Setup retry strategy for transient errors
         retry_strategy = Retry(
             total=retries,
             status_forcelist=[429, 500, 502, 503, 504],
@@ -55,8 +56,19 @@ class CanvasClient:
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
-    def _handle_error(self, response):
-        """Map HTTP error codes to custom exceptions."""
+    def _handle_error(self, response: requests.Response) -> None:
+        """
+        Map HTTP error codes to custom exceptions.
+
+        Args:
+            response (requests.Response): The response object from the request.
+
+        Raises:
+            CanvasAuthError: If 401 Unauthorized.
+            CanvasForbiddenError: If 403 Forbidden.
+            CanvasNotFoundError: If 404 Not Found.
+            CanvasAPIError: For other HTTP errors.
+        """
         if response.status_code == 401:
             raise CanvasAuthError("Authentication failed: Invalid access token.")
         elif response.status_code == 403:
@@ -69,20 +81,42 @@ class CanvasClient:
             except requests.exceptions.HTTPError as e:
                 raise CanvasAPIError(f"API Error: {e}")
 
-    def _get(self, endpoint, params=None):
-        """Base GET method with error handling and timeout."""
+    def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Internal base GET method with error handling and timeout.
+
+        Args:
+            endpoint (str): The API endpoint relative to the base URL.
+            params (dict, optional): Query parameters.
+
+        Returns:
+            Any: The parsed JSON response.
+        """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         response = self.session.get(url, params=params, timeout=self.timeout)
         self._handle_error(response)
         return response.json()
 
-    def _get_all(self, endpoint, params=None):
-        """Fetch all pages with error handling and timeout."""
-        all_items = []
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+    def _get_all(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> List[Any]:
+        """
+        Fetch all pages of a paginated API endpoint.
+
+        Args:
+            endpoint (str): The API endpoint.
+            params (dict, optional): Initial query parameters.
+
+        Returns:
+            List[Any]: Consolidated list of items from all pages.
+        """
+        all_items: List[Any] = []
+        url: Optional[str] = f"{self.base_url}/{endpoint.lstrip('/')}"
+        
+        # Current params for the first request
+        current_params = params
         
         while url:
-            response = self.session.get(url, params=params, timeout=self.timeout)
+            # We use the session.get directly here because url might be absolute from Link header
+            response = self.session.get(url, params=current_params, timeout=self.timeout)
             self._handle_error(response)
             
             items = response.json()
@@ -92,23 +126,56 @@ class CanvasClient:
                 all_items.append(items)
                 break
 
+            # Extract next URL from Link header via requests' built-in parser
             url = response.links.get('next', {}).get('url')
-            params = None 
+            # Once we follow a 'next' link, params are already in the URL
+            current_params = None 
             
         return all_items
 
-    def get_user_self(self):
-        """Retrieve the current user."""
+    def get_user_self(self) -> Dict[str, Any]:
+        """
+        Retrieve information about the currently authenticated user.
+
+        Returns:
+            Dict[str, Any]: The user's profile information.
+        """
         return self._get("api/v1/users/self")
 
-    def get_courses(self, params=None):
-        """Retrieve the user's courses."""
+    def get_courses(self, params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve the list of courses for the authenticated user.
+
+        Args:
+            params (dict, optional): Query parameters for filtering courses.
+
+        Returns:
+            List[Dict[str, Any]]: The list of courses.
+        """
         return self._get_all("api/v1/courses", params=params)
 
-    def get_enrollments(self, course_id, params=None):
-        """Retrieve enrollments for a course."""
+    def get_enrollments(self, course_id: Union[str, int], params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve the list of enrollments for a specific course.
+
+        Args:
+            course_id (str|int): The ID of the course.
+            params (dict, optional): Query parameters.
+
+        Returns:
+            List[Dict[str, Any]]: The list of enrollments.
+        """
         return self._get_all(f"api/v1/courses/{course_id}/enrollments", params=params)
 
-    def get_assignments(self, course_id, params=None):
-        """Retrieve assignments for a course."""
+    def get_assignments(self, course_id: Union[str, int], params: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve the list of assignments for a specific course.
+
+        Args:
+            course_id (str|int): The ID of the course.
+            params (dict, optional): Query parameters.
+
+        Returns:
+            List[Dict[str, Any]]: The list of assignments.
+        """
         return self._get_all(f"api/v1/courses/{course_id}/assignments", params=params)
