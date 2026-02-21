@@ -1,7 +1,7 @@
 # Implementation Plan: Canvas API Wrapper
 
 ## Phase 1: Foundation & Base Client Implementation
-- [ ] **Task: Setup initial CanvasClient class and base GET method.**
+- [x] **Task: Setup initial CanvasClient class and base GET method.** 223d8bc
     - [ ] Write tests for `CanvasClient` initialization (handling missing credentials).
     - [ ] Implement `CanvasClient` class with `BASE_URL` and `ACCESS_TOKEN` configuration.
     - [ ] Write tests for the base `_get` method (handling successful and failing HTTP requests).
