@@ -21,12 +21,12 @@
 - [x] **Task: Conductor - User Manual Verification 'Phase 2: Core Methods' (Protocol in workflow.md)** 46c4daa
 
 ## Phase 3: Error Handling & Resilience
-- [ ] **Task: Implement custom exception mapping.**
-    - [ ] Write tests for error handling (handling 401, 403, 404, and 500 status codes).
-    - [ ] Implement custom exception classes (e.g., `CanvasAuthError`, `CanvasNotFoundError`) and mapping logic.
-- [ ] **Task: Implement timeout and basic retry logic.**
-    - [ ] Write tests for network timeouts and retries.
-    - [ ] Implement configurable timeouts and a simple retry mechanism for 5xx errors.
+- [x] **Task: Implement custom exception mapping.** a4700ee
+    - [x] Write tests for error handling (handling 401, 403, 404, and 500 status codes).
+    - [x] Implement custom exception classes (e.g., `CanvasAuthError`, `CanvasNotFoundError`) and mapping logic.
+- [x] **Task: Implement timeout and basic retry logic.** a4700ee
+    - [x] Write tests for network timeouts and retries.
+    - [x] Implement configurable timeouts and a simple retry mechanism for 5xx errors.
 - [ ] **Task: Conductor - User Manual Verification 'Phase 3: Error Handling' (Protocol in workflow.md)**
 
 ## Phase 4: Refactoring and Integration
