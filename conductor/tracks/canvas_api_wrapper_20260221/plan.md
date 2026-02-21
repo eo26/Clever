@@ -11,14 +11,14 @@
     - [x] Implement the `_get_all` helper method to consolidate paginated results.
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)** 73e35c4
 
-## Phase 2: Core API Methods & Data Retrieval
+## Phase 2: Core API Methods & Data Retrieval [checkpoint: 46c4daa]
 - [x] **Task: Implement user and course retrieval methods.** 90ca69e
-    - [ ] Write tests for `get_user_self` and `get_courses`.
-    - [ ] Implement `get_user_self` and `get_courses` methods.
+    - [x] Write tests for `get_user_self` and `get_courses`.
+    - [x] Implement `get_user_self` and `get_courses` methods.
 - [x] **Task: Implement enrollment and assignment retrieval methods.** 05cf8c4
-    - [ ] Write tests for `get_enrollments` and `get_assignments`.
-    - [ ] Implement `get_enrollments` and `get_assignments` methods.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: Core Methods' (Protocol in workflow.md)**
+    - [x] Write tests for `get_enrollments` and `get_assignments`.
+    - [x] Implement `get_enrollments` and `get_assignments` methods.
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: Core Methods' (Protocol in workflow.md)** 46c4daa
 
 ## Phase 3: Error Handling & Resilience
 - [ ] **Task: Implement custom exception mapping.**
