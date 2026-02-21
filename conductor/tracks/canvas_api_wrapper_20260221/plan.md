@@ -1,15 +1,15 @@
 # Implementation Plan: Canvas API Wrapper
 
-## Phase 1: Foundation & Base Client Implementation
+## Phase 1: Foundation & Base Client Implementation [checkpoint: 73e35c4]
 - [x] **Task: Setup initial CanvasClient class and base GET method.** 223d8bc
-    - [ ] Write tests for `CanvasClient` initialization (handling missing credentials).
-    - [ ] Implement `CanvasClient` class with `BASE_URL` and `ACCESS_TOKEN` configuration.
-    - [ ] Write tests for the base `_get` method (handling successful and failing HTTP requests).
-    - [ ] Implement the base `_get` method using `requests.Session` for efficient connections.
+    - [x] Write tests for `CanvasClient` initialization (handling missing credentials).
+    - [x] Implement `CanvasClient` class with `BASE_URL` and `ACCESS_TOKEN` configuration.
+    - [x] Write tests for the base `_get` method (handling successful and failing HTTP requests).
+    - [x] Implement the base `_get` method using `requests.Session` for efficient connections.
 - [x] **Task: Implement Automated Pagination Logic.** 88d0dbb
-    - [ ] Write tests for `_get_all` method (simulating multiple pages via `Link` headers).
-    - [ ] Implement the `_get_all` helper method to consolidate paginated results.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)**
+    - [x] Write tests for `_get_all` method (simulating multiple pages via `Link` headers).
+    - [x] Implement the `_get_all` helper method to consolidate paginated results.
+- [x] **Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)** 73e35c4
 
 ## Phase 2: Core API Methods & Data Retrieval
 - [ ] **Task: Implement user and course retrieval methods.**
