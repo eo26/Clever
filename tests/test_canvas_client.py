@@ -82,5 +82,34 @@ class TestCanvasClient(unittest.TestCase):
         self.assertEqual(result, [{"id": 1}, {"id": 2}, {"id": 3}])
         self.assertEqual(mock_get.call_count, 2)
 
+    @patch('requests.Session.get')
+    def test_get_user_self(self, mock_get):
+        """Test get_user_self method."""
+        if CanvasClient is None:
+            self.fail("CanvasClient not implemented")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"id": 123, "name": "Test User"}
+        mock_get.return_value = mock_response
+
+        result = self.client.get_user_self()
+        self.assertEqual(result, {"id": 123, "name": "Test User"})
+        mock_get.assert_called_with("https://example.com/api/v1/users/self", params=None)
+
+    @patch('requests.Session.get')
+    def test_get_courses(self, mock_get):
+        """Test get_courses method."""
+        if CanvasClient is None:
+            self.fail("CanvasClient not implemented")
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = [{"id": 1, "name": "Course 1"}]
+        mock_response.links = {}
+        mock_get.return_value = mock_response
+
+        result = self.client.get_courses()
+        self.assertEqual(result, [{"id": 1, "name": "Course 1"}])
+        mock_get.assert_called_with("https://example.com/api/v1/courses", params=None)
+
 if __name__ == '__main__':
     unittest.main()

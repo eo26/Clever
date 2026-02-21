@@ -81,3 +81,24 @@ class CanvasClient:
             params = None 
             
         return all_items
+
+    def get_user_self(self):
+        """
+        Retrieve information about the currently authenticated user.
+
+        Returns:
+            dict: The user's profile information.
+        """
+        return self._get("api/v1/users/self")
+
+    def get_courses(self, params=None):
+        """
+        Retrieve the list of courses for the authenticated user.
+
+        Args:
+            params (dict, optional): Query parameters for filtering courses.
+
+        Returns:
+            list: The list of courses.
+        """
+        return self._get_all("api/v1/courses", params=params)
