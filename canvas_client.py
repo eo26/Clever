@@ -49,3 +49,35 @@ class CanvasClient:
         response = self.session.get(url, params=params)
         response.raise_for_status()
         return response.json()
+
+    def _get_all(self, endpoint, params=None):
+        """
+        Fetch all pages of a paginated API endpoint.
+
+        Args:
+            endpoint (str): The API endpoint.
+            params (dict, optional): Query parameters.
+
+        Returns:
+            list: Consolidated JSON response from all pages.
+        """
+        all_items = []
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        
+        while url:
+            response = self.session.get(url, params=params)
+            response.raise_for_status()
+            
+            items = response.json()
+            if isinstance(items, list):
+                all_items.extend(items)
+            else:
+                all_items.append(items)
+                break
+
+            # Use requests built-in link header parser
+            url = response.links.get('next', {}).get('url')
+            # After the first request, the 'next' URL includes existing params
+            params = None 
+            
+        return all_items

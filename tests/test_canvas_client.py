@@ -59,5 +59,28 @@ class TestCanvasClient(unittest.TestCase):
         with self.assertRaises(Exception):
             self.client._get("api/v1/test")
 
+    @patch('requests.Session.get')
+    def test_get_all_pagination(self, mock_get):
+        """Test the _get_all method with pagination."""
+        if CanvasClient is None:
+            self.fail("CanvasClient not implemented")
+        
+        # Setup mock responses for two pages
+        mock_response_1 = MagicMock()
+        mock_response_1.status_code = 200
+        mock_response_1.json.return_value = [{"id": 1}, {"id": 2}]
+        mock_response_1.links = {'next': {'url': 'https://example.com/api/v1/test?page=2'}}
+
+        mock_response_2 = MagicMock()
+        mock_response_2.status_code = 200
+        mock_response_2.json.return_value = [{"id": 3}]
+        mock_response_2.links = {}
+
+        mock_get.side_effect = [mock_response_1, mock_response_2]
+
+        result = self.client._get_all("api/v1/test")
+        self.assertEqual(result, [{"id": 1}, {"id": 2}, {"id": 3}])
+        self.assertEqual(mock_get.call_count, 2)
+
 if __name__ == '__main__':
     unittest.main()
