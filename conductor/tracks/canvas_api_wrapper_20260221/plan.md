@@ -15,7 +15,7 @@
 - [x] **Task: Implement user and course retrieval methods.** 90ca69e
     - [ ] Write tests for `get_user_self` and `get_courses`.
     - [ ] Implement `get_user_self` and `get_courses` methods.
-- [ ] **Task: Implement enrollment and assignment retrieval methods.**
+- [x] **Task: Implement enrollment and assignment retrieval methods.** 05cf8c4
     - [ ] Write tests for `get_enrollments` and `get_assignments`.
     - [ ] Implement `get_enrollments` and `get_assignments` methods.
 - [ ] **Task: Conductor - User Manual Verification 'Phase 2: Core Methods' (Protocol in workflow.md)**
