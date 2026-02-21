@@ -6,6 +6,8 @@ This document defines the core technologies and libraries used in the Clever Dat
 ## Core Technologies
 - **Programming Language:** Python 3.x
 - **HTTP Client:** `requests` - Used for all API requests to the Canvas LMS.
+- **Resilience:** `urllib3.util.retry` - Implemented via `HTTPAdapter` for automated retries of transient errors (429, 5xx).
+- **Type Safety:** `typing` - Fully type-hinted implementation for improved maintainability.
 - **Data Serialization:** `json` - Used for parsing responses and consolidating data for output.
 
 ## Integrations
