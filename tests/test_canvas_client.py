@@ -7,7 +7,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
-    from canvas_client import CanvasClient
+    from canvas_client import CanvasClient, CanvasAuthError, CanvasNotFoundError
 except ImportError:
     CanvasClient = None
 
@@ -52,8 +52,9 @@ class TestCanvasClient(unittest.TestCase):
         if CanvasClient is None:
             self.fail("CanvasClient not implemented")
         mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = Exception("404 Not Found")
+        mock_response.status_code = 500
+        mock_response.url = "https://example.com/api/v1/test"
+        mock_response.raise_for_status.side_effect = Exception("500 Server Error")
         mock_get.return_value = mock_response
 
         with self.assertRaises(Exception):
@@ -94,7 +95,7 @@ class TestCanvasClient(unittest.TestCase):
 
         result = self.client.get_user_self()
         self.assertEqual(result, {"id": 123, "name": "Test User"})
-        mock_get.assert_called_with("https://example.com/api/v1/users/self", params=None)
+        mock_get.assert_called_with("https://example.com/api/v1/users/self", params=None, timeout=10)
 
     @patch('requests.Session.get')
     def test_get_courses(self, mock_get):
@@ -109,7 +110,7 @@ class TestCanvasClient(unittest.TestCase):
 
         result = self.client.get_courses()
         self.assertEqual(result, [{"id": 1, "name": "Course 1"}])
-        mock_get.assert_called_with("https://example.com/api/v1/courses", params=None)
+        mock_get.assert_called_with("https://example.com/api/v1/courses", params=None, timeout=10)
 
     @patch('requests.Session.get')
     def test_get_enrollments(self, mock_get):
@@ -124,7 +125,7 @@ class TestCanvasClient(unittest.TestCase):
 
         result = self.client.get_enrollments(123)
         self.assertEqual(result, [{"id": 1, "type": "StudentEnrollment"}])
-        mock_get.assert_called_with("https://example.com/api/v1/courses/123/enrollments", params=None)
+        mock_get.assert_called_with("https://example.com/api/v1/courses/123/enrollments", params=None, timeout=10)
 
     @patch('requests.Session.get')
     def test_get_assignments(self, mock_get):
@@ -139,7 +140,47 @@ class TestCanvasClient(unittest.TestCase):
 
         result = self.client.get_assignments(123)
         self.assertEqual(result, [{"id": 1, "name": "Assignment 1"}])
-        mock_get.assert_called_with("https://example.com/api/v1/courses/123/assignments", params=None)
+        mock_get.assert_called_with("https://example.com/api/v1/courses/123/assignments", params=None, timeout=10)
+
+    @patch('requests.Session.get')
+    def test_auth_error(self, mock_get):
+        """Test 401 Unauthorized raises CanvasAuthError."""
+        if CanvasClient is None:
+            self.fail("CanvasClient not implemented")
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_get.return_value = mock_response
+
+        with self.assertRaises(CanvasAuthError):
+            self.client.get_user_self()
+
+    @patch('requests.Session.get')
+    def test_not_found_error(self, mock_get):
+        """Test 404 Not Found raises CanvasNotFoundError."""
+        if CanvasClient is None:
+            self.fail("CanvasClient not implemented")
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.url = "https://example.com/api/v1/test"
+        mock_get.return_value = mock_response
+
+        with self.assertRaises(CanvasNotFoundError):
+            self.client.get_enrollments("invalid_course")
+
+    @patch('requests.Session.get')
+    def test_timeout(self, mock_get):
+        """Test that requests use a timeout."""
+        if CanvasClient is None:
+            self.fail("CanvasClient not implemented")
+        import requests
+        mock_get.side_effect = requests.exceptions.Timeout("Timeout occurred")
+
+        with self.assertRaises(requests.exceptions.Timeout):
+            self.client.get_user_self()
+        
+        # Verify that timeout was passed to get
+        mock_get.assert_called()
+        self.assertIn('timeout', mock_get.call_args.kwargs)
 
 if __name__ == '__main__':
     unittest.main()
