@@ -12,7 +12,7 @@
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)** 73e35c4
 
 ## Phase 2: Core API Methods & Data Retrieval
-- [ ] **Task: Implement user and course retrieval methods.**
+- [x] **Task: Implement user and course retrieval methods.** 90ca69e
     - [ ] Write tests for `get_user_self` and `get_courses`.
     - [ ] Implement `get_user_self` and `get_courses` methods.
 - [ ] **Task: Implement enrollment and assignment retrieval methods.**
