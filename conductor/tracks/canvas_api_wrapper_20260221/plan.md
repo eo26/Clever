@@ -20,14 +20,14 @@
     - [x] Implement `get_enrollments` and `get_assignments` methods.
 - [x] **Task: Conductor - User Manual Verification 'Phase 2: Core Methods' (Protocol in workflow.md)** 46c4daa
 
-## Phase 3: Error Handling & Resilience
+## Phase 3: Error Handling & Resilience [checkpoint: d11bc62]
 - [x] **Task: Implement custom exception mapping.** a4700ee
     - [x] Write tests for error handling (handling 401, 403, 404, and 500 status codes).
     - [x] Implement custom exception classes (e.g., `CanvasAuthError`, `CanvasNotFoundError`) and mapping logic.
 - [x] **Task: Implement timeout and basic retry logic.** a4700ee
     - [x] Write tests for network timeouts and retries.
     - [x] Implement configurable timeouts and a simple retry mechanism for 5xx errors.
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: Error Handling' (Protocol in workflow.md)**
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: Error Handling' (Protocol in workflow.md)** d11bc62
 
 ## Phase 4: Refactoring and Integration
 - [ ] **Task: Refactor existing clever.py to use CanvasClient.**
