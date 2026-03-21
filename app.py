@@ -22,6 +22,14 @@ CURRENT_TERM_ID = 3133
 app = Flask(__name__)
 
 
+def _score_to_grade(score: float) -> str:
+    if score >= 90: return 'A'
+    if score >= 80: return 'B'
+    if score >= 70: return 'C'
+    if score >= 60: return 'D'
+    return 'F'
+
+
 @app.route("/")
 def dashboard():
     return render_template("dashboard.html")
@@ -70,15 +78,19 @@ def api_dashboard():
                 {}
             )
             gp_scores = enrollment.get("grading_period_scores") or {}
-            quarters = [
-                {
+            quarters = []
+            for gp in grading_periods:
+                gp_data = gp_scores.get(str(gp["id"])) or {}
+                score = gp_data.get("current_score")
+                grade = gp_data.get("current_grade") or (
+                    _score_to_grade(score) if score is not None else None
+                )
+                quarters.append({
                     "id": gp["id"],
                     "title": gp["title"],
-                    "score": (gp_scores.get(str(gp["id"])) or {}).get("current_score"),
-                    "grade": (gp_scores.get(str(gp["id"])) or {}).get("current_grade"),
-                }
-                for gp in grading_periods
-            ]
+                    "score": score,
+                    "grade": grade,
+                })
             formatted_courses.append({
                 "id": course["id"],
                 "name": course["name"],
