@@ -9,6 +9,7 @@ Usage:
 """
 
 import os
+import re
 from flask import Flask, jsonify, render_template
 from dotenv import load_dotenv
 from canvas_client import CanvasClient, CanvasAPIError, CanvasAuthError
@@ -19,6 +20,21 @@ BASE_URL = "https://browardschools.instructure.com"
 CURRENT_TERM_ID = 3133
 
 app = Flask(__name__)
+
+
+def _parse_period(section_name: str) -> int:
+    """Extract period number from a section name for sort ordering."""
+    if not section_name:
+        return 999
+    # "Period 1", "Per 1", "Per. 01", etc.
+    m = re.search(r'\bper(?:iod)?\.?\s*(\d{1,2})\b', section_name, re.IGNORECASE)
+    if m:
+        return int(m.group(1))
+    # Bare "P1", "P2" not preceded by another letter
+    m = re.search(r'(?<![a-zA-Z])P(\d{1,2})\b', section_name)
+    if m:
+        return int(m.group(1))
+    return 999
 
 
 def _score_to_grade(score: float) -> str:
@@ -52,6 +68,7 @@ def api_dashboard():
                 "current_grading_period_scores",
                 "grading_period_scores",
                 "course_image",
+                "sections",
             ],
         })
 
@@ -76,6 +93,15 @@ def api_dashboard():
                 (e for e in course.get("enrollments", []) if e.get("type") == "student"),
                 {}
             )
+            # Resolve section name from the sections list included with the course.
+            my_section_id = enrollment.get("course_section_id")
+            section_obj = next(
+                (s for s in course.get("sections", []) if s.get("id") == my_section_id),
+                {}
+            )
+            section_name = section_obj.get("name", "")
+            period = _parse_period(section_name)
+
             gp_scores = enrollment.get("grading_period_scores") or {}
             quarters = []
             for gp in grading_periods:
@@ -94,6 +120,8 @@ def api_dashboard():
                 "id": course["id"],
                 "name": course["name"],
                 "course_code": course.get("course_code", ""),
+                "section_name": section_name,
+                "period": period,
                 "current_grade": enrollment.get("computed_current_grade"),
                 "current_score": enrollment.get("computed_current_score"),
                 "final_grade": enrollment.get("computed_final_grade"),
@@ -101,6 +129,8 @@ def api_dashboard():
                 "image_url": course.get("image_download_url"),
                 "quarters": quarters,
             })
+
+        formatted_courses.sort(key=lambda c: c["period"])
 
         return jsonify({
             "student": {
@@ -117,6 +147,38 @@ def api_dashboard():
             "error": "auth",
             "message": "Invalid or expired API token. Generate a new one in Canvas → Account → Settings."
         }), 401
+    except CanvasAPIError as exc:
+        return jsonify({"error": "api", "message": str(exc)}), 500
+    except Exception as exc:  # pylint: disable=broad-except
+        return jsonify({"error": "unknown", "message": str(exc)}), 500
+
+
+@app.route("/api/todo")
+def api_todo():
+    """Return upcoming to-do items (assignments needing submission) across all courses."""
+    try:
+        client = CanvasClient(BASE_URL, ACCESS_TOKEN)
+        items = client.get_todo_items()
+
+        formatted = []
+        for item in items:
+            if item.get("type") != "submitting":
+                continue
+            assignment = item.get("assignment") or {}
+            formatted.append({
+                "course_id": item.get("course_id"),
+                "assignment_id": assignment.get("id"),
+                "name": assignment.get("name", ""),
+                "due_at": assignment.get("due_at"),
+                "points_possible": assignment.get("points_possible"),
+                "html_url": assignment.get("html_url", ""),
+            })
+
+        formatted.sort(key=lambda x: x["due_at"] or "9999-99-99")
+        return jsonify({"items": formatted})
+
+    except CanvasAuthError:
+        return jsonify({"error": "auth", "message": "Invalid or expired API token."}), 401
     except CanvasAPIError as exc:
         return jsonify({"error": "api", "message": str(exc)}), 500
     except Exception as exc:  # pylint: disable=broad-except

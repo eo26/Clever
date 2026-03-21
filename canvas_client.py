@@ -252,6 +252,26 @@ class CanvasClient:
         """
         return self._get_all(f"api/v1/courses/{course_id}/assignment_groups")
 
+    def get_todo_items(
+        self,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve the current user's to-do items (assignments needing submission).
+
+        Args:
+            params (dict, optional): Query parameters (e.g., per_page).
+
+        Returns:
+            List[Dict[str, Any]]: To-do item records, each containing an
+                ``assignment`` sub-object with name, due_at, points_possible,
+                html_url, and a ``course_id`` field.
+        """
+        merged = {"per_page": 50}
+        if params:
+            merged.update(params)
+        return self._get_all("api/v1/users/self/todo_items", params=merged)
+
     def get_user_enrollments(
         self,
         user_id: Union[str, int],
