@@ -180,6 +180,49 @@ class CanvasClient:
         """
         return self._get_all(f"api/v1/courses/{course_id}/assignments", params=params)
 
+    def get_course(self, course_id: Union[str, int]) -> Dict[str, Any]:
+        """
+        Retrieve a single course by ID.
+
+        Args:
+            course_id (str|int): The ID of the course.
+
+        Returns:
+            Dict[str, Any]: The course object.
+        """
+        return self._get(f"api/v1/courses/{course_id}")
+
+    def get_section_enrollments(
+        self,
+        section_id: Union[str, int],
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all enrollments for a specific section.
+
+        Args:
+            section_id (str|int): The Canvas section ID.
+            params (dict, optional): Query parameters (e.g., type[], include[]).
+
+        Returns:
+            List[Dict[str, Any]]: Enrollment records for the section.
+        """
+        return self._get_all(
+            f"api/v1/sections/{section_id}/enrollments", params=params
+        )
+
+    def get_section(self, section_id: Union[str, int]) -> Dict[str, Any]:
+        """
+        Retrieve a single section by ID.
+
+        Args:
+            section_id (str|int): The Canvas section ID.
+
+        Returns:
+            Dict[str, Any]: The section object.
+        """
+        return self._get(f"api/v1/sections/{section_id}")
+
     def get_grading_periods(self, course_id: Union[str, int]) -> List[Dict[str, Any]]:
         """
         Retrieve grading periods for a specific course (e.g., Q1, Q2, Q3, Q4).

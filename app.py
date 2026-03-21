@@ -124,5 +124,72 @@ def api_dashboard():
         return jsonify({"error": "unknown", "message": str(exc)}), 500
 
 
+@app.route("/course/<int:course_id>")
+def course_detail(course_id: int):
+    return render_template("course.html", course_id=course_id)
+
+
+@app.route("/api/course/<int:course_id>")
+def api_course(course_id: int):
+    """Return course info and classmates in the student's section."""
+    try:
+        client = CanvasClient(BASE_URL, ACCESS_TOKEN)
+
+        user = client.get_user_self()
+        user_id = user["id"]
+
+        course = client.get_course(course_id)
+
+        # Find the current student's section in this course.
+        my_enrollments = client.get_enrollments(course_id, params={
+            "user_id": user_id,
+            "type[]": "StudentEnrollment",
+        })
+        if not my_enrollments:
+            return jsonify({"error": "not_enrolled", "message": "Not enrolled."}), 404
+
+        section_id = my_enrollments[0]["course_section_id"]
+        section = client.get_section(section_id)
+
+        # All students in the same section.
+        raw = client.get_section_enrollments(section_id, params={
+            "type[]": "StudentEnrollment",
+            "include[]": "avatar_url",
+            "per_page": 100,
+        })
+
+        students = []
+        for e in raw:
+            u = e.get("user", {})
+            students.append({
+                "id": u.get("id"),
+                "name": u.get("name", ""),
+                "sortable_name": u.get("sortable_name", ""),
+                "avatar_url": u.get("avatar_url"),
+                "is_self": u.get("id") == user_id,
+            })
+        students.sort(key=lambda s: s["sortable_name"].lower())
+
+        return jsonify({
+            "course": {
+                "id": course_id,
+                "name": course.get("name", ""),
+                "course_code": course.get("course_code", ""),
+            },
+            "section": {
+                "id": section_id,
+                "name": section.get("name", ""),
+            },
+            "students": students,
+        })
+
+    except CanvasAuthError:
+        return jsonify({"error": "auth", "message": "Invalid or expired API token."}), 401
+    except CanvasAPIError as exc:
+        return jsonify({"error": "api", "message": str(exc)}), 500
+    except Exception as exc:  # pylint: disable=broad-except
+        return jsonify({"error": "unknown", "message": str(exc)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
