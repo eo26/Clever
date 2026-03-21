@@ -10,12 +10,11 @@ Usage:
 
 import os
 from flask import Flask, jsonify, render_template
+from dotenv import load_dotenv
 from canvas_client import CanvasClient, CanvasAPIError, CanvasAuthError
 
-ACCESS_TOKEN = os.environ.get(
-    "CANVAS_TOKEN",
-    "1773~BNxkQuBnxcZ2BDPEQNAJ2fnvQYG2LMHEUPnfnKBvykFJeXMX7nQ76HLCZtNhz4nA"
-)
+load_dotenv()
+ACCESS_TOKEN = os.environ.get("CANVAS_TOKEN", "")
 BASE_URL = "https://browardschools.instructure.com"
 CURRENT_TERM_ID = 3133
 
