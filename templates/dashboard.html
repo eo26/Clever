@@ -209,53 +209,73 @@
     }
 
     // ── AG Grid ────────────────────────────────────────────────────────
-    const colDefs = [
-      {
-        field: 'name',
-        headerName: 'Course',
-        flex: 3,
-        cellRenderer: renderCourseName,
-        sortable: true,
-        filter: true,
-        minWidth: 220,
-      },
-      {
-        field: 'current_grade',
-        headerName: 'Grade',
-        width: 110,
-        cellRenderer: renderGrade,
-        sortable: true,
-        comparator: (a, b) => (a || 'ZZ').localeCompare(b || 'ZZ'),
-      },
-      {
-        field: 'current_score',
-        headerName: 'Score',
-        width: 190,
-        cellRenderer: renderScore,
-        sortable: true,
-        sort: 'desc',
-      },
-      {
-        field: 'final_grade',
-        headerName: 'Final Grade',
-        width: 120,
-        cellRenderer: renderGrade,
-        sortable: true,
-      },
-      {
-        headerName: '',
-        width: 140,
-        cellRenderer: renderAction,
-        sortable: false,
-        filter: false,
-        suppressMovable: true,
-        resizable: false,
-      },
-    ];
+    function renderQuarter(p) {
+      const v = p.value;
+      if (!v) return `<span class="text-slate-400 text-sm">—</span>`;
+      if (v.grade) return `<span class="badge ${gradeClass(v.grade)}">${v.grade}</span>`;
+      if (v.score != null) return `<span class="text-sm font-medium" style="color:${scoreColor(v.score)}">${v.score.toFixed(1)}%</span>`;
+      return `<span class="text-slate-400 text-sm">—</span>`;
+    }
 
     let gridApi;
 
     function initGrid(courses) {
+      // Build quarter columns dynamically from the first course that has them.
+      const sample = courses.find(c => c.quarters && c.quarters.length > 0);
+      const quarterCols = (sample ? sample.quarters : []).map(q => ({
+        headerName: q.title,
+        valueGetter: p => (p.data.quarters || []).find(x => x.id === q.id) || null,
+        cellRenderer: renderQuarter,
+        sortable: true,
+        comparator: (a, b) => ((a?.score ?? -1) - (b?.score ?? -1)),
+        width: 100,
+      }));
+
+      const colDefs = [
+        {
+          field: 'name',
+          headerName: 'Course',
+          flex: 3,
+          cellRenderer: renderCourseName,
+          sortable: true,
+          filter: true,
+          minWidth: 220,
+        },
+        {
+          field: 'current_grade',
+          headerName: 'Grade',
+          width: 110,
+          cellRenderer: renderGrade,
+          sortable: true,
+          comparator: (a, b) => (a || 'ZZ').localeCompare(b || 'ZZ'),
+        },
+        {
+          field: 'current_score',
+          headerName: 'Score',
+          width: 190,
+          cellRenderer: renderScore,
+          sortable: true,
+          sort: 'desc',
+        },
+        ...quarterCols,
+        {
+          field: 'final_grade',
+          headerName: 'Final Grade',
+          width: 120,
+          cellRenderer: renderGrade,
+          sortable: true,
+        },
+        {
+          headerName: '',
+          width: 140,
+          cellRenderer: renderAction,
+          sortable: false,
+          filter: false,
+          suppressMovable: true,
+          resizable: false,
+        },
+      ];
+
       gridApi = agGrid.createGrid(
         document.getElementById('course-grid'),
         {

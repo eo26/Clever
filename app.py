@@ -40,7 +40,12 @@ def api_dashboard():
             "per_page": 100,
             "enrollment_type": "student",
             "enrollment_state": "active",
-            "include[]": ["total_scores", "current_grading_period_scores", "course_image"],
+            "include[]": [
+                "total_scores",
+                "current_grading_period_scores",
+                "grading_period_scores",
+                "course_image",
+            ],
         })
 
         current_courses = [
@@ -48,12 +53,32 @@ def api_dashboard():
             if c.get("enrollment_term_id") == CURRENT_TERM_ID
         ]
 
+        # Grading periods are term-wide — fetch once from the first course.
+        grading_periods = []
+        if current_courses:
+            try:
+                grading_periods = client.get_grading_periods(
+                    current_courses[0]["id"]
+                )
+            except CanvasAPIError:
+                pass
+
         formatted_courses = []
         for course in current_courses:
             enrollment = next(
                 (e for e in course.get("enrollments", []) if e.get("type") == "student"),
                 {}
             )
+            gp_scores = enrollment.get("grading_period_scores") or {}
+            quarters = [
+                {
+                    "id": gp["id"],
+                    "title": gp["title"],
+                    "score": (gp_scores.get(str(gp["id"])) or {}).get("current_score"),
+                    "grade": (gp_scores.get(str(gp["id"])) or {}).get("current_grade"),
+                }
+                for gp in grading_periods
+            ]
             formatted_courses.append({
                 "id": course["id"],
                 "name": course["name"],
@@ -63,6 +88,7 @@ def api_dashboard():
                 "final_grade": enrollment.get("computed_final_grade"),
                 "final_score": enrollment.get("computed_final_score"),
                 "image_url": course.get("image_download_url"),
+                "quarters": quarters,
             })
 
         return jsonify({
