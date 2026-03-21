@@ -99,6 +99,12 @@
           <p id="course-code" class="text-sm font-medium text-blue-600 mb-1"></p>
           <h1 id="course-name" class="text-2xl font-bold text-slate-800"></h1>
           <p id="section-name" class="text-sm text-slate-400 mt-1"></p>
+          <a id="classmates-link" href="#"
+             class="inline-block mt-3 text-xs font-medium text-slate-500 hover:text-blue-600
+                    border border-slate-200 hover:border-blue-300 rounded-lg px-3 py-1.5
+                    transition-all duration-150">
+            View Classmates →
+          </a>
         </div>
         <div class="flex gap-6 text-center shrink-0">
           <div>
@@ -159,30 +165,12 @@
         </div>
       </div>
 
-      <!-- Classmates -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-800">Classmates</h2>
-            <p id="student-count" class="text-slate-400 text-sm"></p>
-          </div>
-          <input id="student-filter"
-                 type="text"
-                 placeholder="🔍  Filter students…"
-                 class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none
-                        focus:ring-2 focus:ring-blue-300 w-52 bg-slate-50" />
-        </div>
-        <div class="px-4 pb-4 pt-2">
-          <div id="student-grid" class="ag-theme-alpine w-full"></div>
-        </div>
-      </div>
-
     </div><!-- /content -->
   </main>
 
   <script>
     const COURSE_ID = {{ course_id }};
-    let assignGridApi, studentGridApi;
+    let assignGridApi;
     let activeGroup = 'all';
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -259,18 +247,6 @@
         ? ['s-missing', 'Missing']
         : (map[s] || ['s-none', 'Not Submitted']);
       return `<span class="badge ${cls}">${lbl}</span>`;
-    }
-
-    function renderStudent(p) {
-      const { name, avatar_url, is_self } = p.data;
-      const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-      const avatar = avatar_url && !avatar_url.includes('/images/messages/')
-        ? `<img src="${avatar_url}" class="w-9 h-9 rounded-full object-cover ring-2 ring-slate-100" />`
-        : `<div class="w-9 h-9 rounded-full bg-blue-700 text-white text-xs font-bold flex items-center justify-center select-none">${initials}</div>`;
-      const badge = is_self
-        ? `<span class="ml-2 text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">You</span>`
-        : '';
-      return `<div class="flex items-center gap-3 h-full">${avatar}<span class="font-medium text-slate-800">${name}</span>${badge}</div>`;
     }
 
     // ── Group chips ────────────────────────────────────────────────────────────
@@ -413,38 +389,6 @@
       assignGridApi?.setGridOption('quickFilterText', e.target.value);
     });
 
-    // ── Student grid ──────────────────────────────────────────────────────────
-    function initStudentGrid(students) {
-      studentGridApi = agGrid.createGrid(
-        document.getElementById('student-grid'),
-        {
-          columnDefs: [
-            {
-              field: 'name',
-              headerName: 'Student',
-              flex: 1,
-              cellRenderer: renderStudent,
-              sortable: true,
-              filter: true,
-              minWidth: 240,
-              comparator: (a, b, nodeA, nodeB) =>
-                nodeA.data.sortable_name.localeCompare(nodeB.data.sortable_name),
-            },
-          ],
-          rowData: students,
-          defaultColDef: { resizable: true },
-          rowHeight: 56,
-          headerHeight: 44,
-          animateRows: true,
-          domLayout: 'autoHeight',
-        }
-      );
-    }
-
-    document.getElementById('student-filter').addEventListener('input', e => {
-      studentGridApi?.setGridOption('quickFilterText', e.target.value);
-    });
-
     // ── Load data ─────────────────────────────────────────────────────────────
     async function load() {
       try {
@@ -465,13 +409,10 @@
         document.getElementById('course-code').textContent  = courseData.course.course_code;
         document.getElementById('course-name').textContent  = courseData.course.name;
         document.getElementById('section-name').textContent = courseData.section.name;
-        document.getElementById('student-count').textContent =
-          `${courseData.students.length} student${courseData.students.length !== 1 ? 's' : ''}`;
+        document.getElementById('classmates-link').href = `/course/${COURSE_ID}/classmates`;
 
         const score = courseData.course.current_score;
         document.getElementById('stat-score').textContent = score != null ? score.toFixed(1) + '%' : '—';
-
-        initStudentGrid(courseData.students);
 
         if (!assignData.error) {
           initAssignGrid(assignData.assignments);

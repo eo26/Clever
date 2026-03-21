@@ -31,7 +31,7 @@
       --ag-cell-horizontal-padding: 16px;
     }
     .ag-theme-alpine .ag-header-cell-label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
-    .ag-theme-alpine .ag-row { cursor: pointer; }
+
 
     /* ---- Score bar ---- */
     .score-wrap  { display:flex; align-items:center; gap:8px; height:100%; }
@@ -124,7 +124,7 @@
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 class="text-lg font-semibold text-slate-800">Current Classes</h2>
-            <p class="text-slate-400 text-sm">Click any row to view assignments &amp; full details</p>
+            <p class="text-slate-400 text-sm">Use the action buttons to view assignments or classmates</p>
           </div>
           <input id="quick-filter"
                  type="text"
@@ -174,17 +174,23 @@
     }
 
     function renderAction(p) {
-      return `<button
-                onclick="event.stopPropagation(); openCourse(${p.data.id})"
-                class="text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600
-                       border border-blue-200 hover:border-blue-600
-                       rounded-lg px-3 py-1.5 transition-all duration-150 whitespace-nowrap">
-                View Details →
-              </button>`;
-    }
-
-    function openCourse(id) {
-      window.location.href = `/course/${id}`;
+      const id = p.data.id;
+      return `<div class="flex items-center gap-2 h-full">
+                <button
+                  onclick="event.stopPropagation(); window.location.href='/course/${id}'"
+                  class="text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600
+                         border border-blue-200 hover:border-blue-600
+                         rounded-lg px-3 py-1.5 transition-all duration-150 whitespace-nowrap">
+                  Assignments
+                </button>
+                <button
+                  onclick="event.stopPropagation(); window.location.href='/course/${id}/classmates'"
+                  class="text-xs font-medium text-slate-500 hover:text-white hover:bg-slate-600
+                         border border-slate-200 hover:border-slate-600
+                         rounded-lg px-3 py-1.5 transition-all duration-150 whitespace-nowrap">
+                  Classmates
+                </button>
+              </div>`;
     }
 
     // ── AG Grid ────────────────────────────────────────────────────────
@@ -211,7 +217,7 @@
         },
         {
           headerName: '',
-          width: 140,
+          width: 230,
           cellRenderer: renderAction,
           sortable: false,
           filter: false,
@@ -230,9 +236,6 @@
           headerHeight: 44,
           animateRows: true,
           domLayout: 'autoHeight',
-          onRowClicked: (e) => {
-            if (!e.event.target.closest('button')) openCourse(e.data.id);
-          },
         }
       );
     }

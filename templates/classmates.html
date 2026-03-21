@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classmates</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-alpine.css" />
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+
+    .ag-theme-alpine {
+      --ag-font-family: 'Inter', sans-serif;
+      --ag-font-size: 14px;
+      --ag-header-background-color: #f8fafc;
+      --ag-header-foreground-color: #64748b;
+      --ag-row-hover-color: #f0f9ff;
+      --ag-border-color: #e2e8f0;
+      --ag-cell-horizontal-padding: 16px;
+    }
+    .ag-theme-alpine .ag-header-cell-label {
+      font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-yellow-400 rounded-md flex items-center justify-center font-bold text-blue-900 text-xs tracking-tight">BC</div>
+      <span class="font-semibold text-base">Broward Student Portal</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <a id="assignments-link" href="#" class="text-sm text-blue-300 hover:text-white transition-colors">Assignments</a>
+      <a href="/" class="text-sm text-blue-300 hover:text-white transition-colors">← Dashboard</a>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- Loading -->
+    <div id="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
+      <svg class="spin w-10 h-10 mb-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+      </svg>
+      <p class="text-sm">Loading classmates…</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-state" class="hidden">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+        <div class="text-4xl mb-3">⚠️</div>
+        <p class="font-semibold text-red-700 text-lg" id="error-message">Failed to load classmates</p>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden space-y-6">
+
+      <!-- Course header -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <p id="course-code" class="text-sm font-medium text-blue-600 mb-1"></p>
+        <h1 id="course-name" class="text-2xl font-bold text-slate-800"></h1>
+        <p id="section-name" class="text-sm text-slate-400 mt-1"></p>
+      </div>
+
+      <!-- Classmates grid -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-800">Classmates</h2>
+            <p id="student-count" class="text-slate-400 text-sm"></p>
+          </div>
+          <input id="quick-filter"
+                 type="text"
+                 placeholder="🔍  Filter students…"
+                 class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none
+                        focus:ring-2 focus:ring-blue-300 w-52 bg-slate-50" />
+        </div>
+        <div class="px-4 pb-4 pt-2">
+          <div id="student-grid" class="ag-theme-alpine w-full"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const COURSE_ID = {{ course_id }};
+    let gridApi;
+
+    function renderStudent(p) {
+      const { name, avatar_url, is_self } = p.data;
+      const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+      const avatar = avatar_url && !avatar_url.includes('/images/messages/')
+        ? `<img src="${avatar_url}" class="w-9 h-9 rounded-full object-cover ring-2 ring-slate-100" />`
+        : `<div class="w-9 h-9 rounded-full bg-blue-700 text-white text-xs font-bold flex items-center justify-center select-none">${initials}</div>`;
+      const badge = is_self
+        ? `<span class="ml-2 text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">You</span>`
+        : '';
+      return `<div class="flex items-center gap-3 h-full">
+                ${avatar}
+                <span class="font-medium text-slate-800">${name}</span>
+                ${badge}
+              </div>`;
+    }
+
+    function initGrid(students) {
+      gridApi = agGrid.createGrid(
+        document.getElementById('student-grid'),
+        {
+          columnDefs: [
+            {
+              field: 'name',
+              headerName: 'Student',
+              flex: 1,
+              cellRenderer: renderStudent,
+              sortable: true,
+              filter: true,
+              minWidth: 240,
+              comparator: (a, b, nodeA, nodeB) =>
+                nodeA.data.sortable_name.localeCompare(nodeB.data.sortable_name),
+            },
+          ],
+          rowData: students,
+          defaultColDef: { resizable: true },
+          rowHeight: 56,
+          headerHeight: 44,
+          animateRows: true,
+          domLayout: 'autoHeight',
+        }
+      );
+    }
+
+    document.getElementById('quick-filter').addEventListener('input', e => {
+      gridApi?.setGridOption('quickFilterText', e.target.value);
+    });
+
+    async function load() {
+      try {
+        const res  = await fetch(`/api/course/${COURSE_ID}`);
+        const data = await res.json();
+
+        if (data.error) {
+          show('error');
+          document.getElementById('error-message').textContent = data.message;
+          return;
+        }
+
+        document.title = `Classmates — ${data.course.name}`;
+        document.getElementById('course-code').textContent  = data.course.course_code;
+        document.getElementById('course-name').textContent  = data.course.name;
+        document.getElementById('section-name').textContent = data.section.name;
+        document.getElementById('student-count').textContent =
+          `${data.students.length} student${data.students.length !== 1 ? 's' : ''} in your section`;
+        document.getElementById('assignments-link').href = `/course/${COURSE_ID}`;
+
+        initGrid(data.students);
+        show('content');
+
+      } catch (err) {
+        show('error');
+        document.getElementById('error-message').textContent = 'Could not reach the server.';
+        console.error(err);
+      }
+    }
+
+    function show(panel) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error-state').classList.add('hidden');
+      document.getElementById('content').classList.add('hidden');
+      document.getElementById(panel === 'content' ? 'content' : panel + '-state').classList.remove('hidden');
+    }
+
+    load();
+  </script>
+</body>
+</html>

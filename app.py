@@ -128,6 +128,11 @@ def course_detail(course_id: int):
     return render_template("course.html", course_id=course_id)
 
 
+@app.route("/course/<int:course_id>/classmates")
+def course_classmates(course_id: int):
+    return render_template("classmates.html", course_id=course_id)
+
+
 @app.route("/api/course/<int:course_id>")
 def api_course(course_id: int):
     """Return course info and classmates in the student's section."""
