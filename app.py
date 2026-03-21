@@ -93,12 +93,10 @@ def api_dashboard():
                 (e for e in course.get("enrollments", []) if e.get("type") == "student"),
                 {}
             )
-            # Resolve section name from the sections list included with the course.
-            my_section_id = enrollment.get("course_section_id")
-            section_obj = next(
-                (s for s in course.get("sections", []) if s.get("id") == my_section_id),
-                {}
-            )
+            # include[]=sections returns only the sections this student is enrolled in,
+            # so the first entry is the student's section — no id matching needed.
+            sections = course.get("sections", [])
+            section_obj = sections[0] if sections else {}
             section_name = section_obj.get("name", "")
             period = _parse_period(section_name)
 

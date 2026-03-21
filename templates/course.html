@@ -301,6 +301,7 @@
           width: 150,
           cellRenderer: renderDue,
           sortable: true,
+          sort: 'desc',
           filter: 'agDateColumnFilter',
           floatingFilter: true,
           comparator: (a, b) => {
@@ -336,7 +337,6 @@
           sortable: true,
           filter: 'agNumberColumnFilter',
           floatingFilter: true,
-          sort: 'asc',
         },
         {
           field: 'status',
