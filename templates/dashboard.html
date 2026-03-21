@@ -20,15 +20,6 @@
   <style>
     * { font-family: 'Inter', sans-serif; }
 
-    /* ---- Grade badge colours ---- */
-    .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:12px; font-weight:600; }
-    .grade-a  { background:#dcfce7; color:#15803d; }
-    .grade-b  { background:#dbeafe; color:#1d4ed8; }
-    .grade-c  { background:#fef9c3; color:#a16207; }
-    .grade-d  { background:#ffedd5; color:#c2410c; }
-    .grade-f  { background:#fee2e2; color:#b91c1c; }
-    .grade-na { background:#f1f5f9; color:#94a3b8; }
-
     /* ---- AG Grid overrides ---- */
     .ag-theme-alpine {
       --ag-font-family: 'Inter', sans-serif;
@@ -152,12 +143,6 @@
 
   <script>
     // ── Helpers ────────────────────────────────────────────────────────
-    function gradeClass(g) {
-      if (!g) return 'grade-na';
-      const l = g.trim()[0].toUpperCase();
-      return { A:'grade-a', B:'grade-b', C:'grade-c', D:'grade-d', F:'grade-f' }[l] || 'grade-na';
-    }
-
     function scoreColor(s) {
       if (s == null) return '#94a3b8';
       if (s >= 90)  return '#16a34a';
@@ -173,11 +158,6 @@
                 <span class="font-semibold text-slate-800 group-hover:text-blue-600">${p.data.name}</span>
                 <span class="text-xs text-slate-400">${p.data.course_code || ''}</span>
               </div>`;
-    }
-
-    function renderGrade(p) {
-      const g = p.value;
-      return `<span class="badge ${gradeClass(g)}">${g || '—'}</span>`;
     }
 
     function renderScore(p) {
@@ -208,28 +188,9 @@
     }
 
     // ── AG Grid ────────────────────────────────────────────────────────
-    function renderQuarter(p) {
-      const v = p.value;
-      if (!v) return `<span class="text-slate-400 text-sm">—</span>`;
-      if (v.grade) return `<span class="badge ${gradeClass(v.grade)}">${v.grade}</span>`;
-      if (v.score != null) return `<span class="text-sm font-medium" style="color:${scoreColor(v.score)}">${v.score.toFixed(1)}%</span>`;
-      return `<span class="text-slate-400 text-sm">—</span>`;
-    }
-
     let gridApi;
 
     function initGrid(courses) {
-      // Build quarter columns dynamically from the first course that has them.
-      const sample = courses.find(c => c.quarters && c.quarters.length > 0);
-      const quarterCols = (sample ? sample.quarters : []).map(q => ({
-        headerName: q.title,
-        valueGetter: p => (p.data.quarters || []).find(x => x.id === q.id) || null,
-        cellRenderer: renderQuarter,
-        sortable: true,
-        comparator: (a, b) => ((a?.score ?? -1) - (b?.score ?? -1)),
-        width: 100,
-      }));
-
       const colDefs = [
         {
           field: 'name',
@@ -241,28 +202,12 @@
           minWidth: 220,
         },
         {
-          field: 'current_grade',
-          headerName: 'Grade',
-          width: 110,
-          cellRenderer: renderGrade,
-          sortable: true,
-          comparator: (a, b) => (a || 'ZZ').localeCompare(b || 'ZZ'),
-        },
-        {
           field: 'current_score',
           headerName: 'Score',
-          width: 190,
+          width: 210,
           cellRenderer: renderScore,
           sortable: true,
           sort: 'desc',
-        },
-        ...quarterCols,
-        {
-          field: 'final_grade',
-          headerName: 'Final Grade',
-          width: 120,
-          cellRenderer: renderGrade,
-          sortable: true,
         },
         {
           headerName: '',

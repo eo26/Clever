@@ -25,8 +25,36 @@
       --ag-row-hover-color: #f0f9ff;
       --ag-border-color: #e2e8f0;
       --ag-cell-horizontal-padding: 16px;
+      --ag-floating-filter-height: 36px;
     }
-    .ag-theme-alpine .ag-header-cell-label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ag-theme-alpine .ag-header-cell-label {
+      font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .ag-theme-alpine .ag-floating-filter-input { font-size: 13px; }
+
+    /* Status badges */
+    .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .s-graded     { background:#dcfce7; color:#15803d; }
+    .s-submitted  { background:#dbeafe; color:#1d4ed8; }
+    .s-missing    { background:#fee2e2; color:#b91c1c; }
+    .s-pending    { background:#fef9c3; color:#a16207; }
+    .s-none       { background:#f1f5f9; color:#94a3b8; }
+
+    /* Score bar */
+    .score-wrap  { display:flex; align-items:center; gap:8px; height:100%; }
+    .score-track { flex:1; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; max-width:80px; }
+    .score-fill  { height:100%; border-radius:3px; }
+    .score-label { font-size:13px; font-weight:600; min-width:44px; }
+
+    /* Group filter chips */
+    .chip {
+      display:inline-flex; align-items:center; padding:4px 14px;
+      border-radius:9999px; font-size:12px; font-weight:500;
+      cursor:pointer; border:1px solid; transition:all 0.15s; white-space:nowrap;
+    }
+    .chip-on  { background:#1d4ed8; color:white; border-color:#1d4ed8; }
+    .chip-off { background:white; color:#64748b; border-color:#e2e8f0; }
+    .chip-off:hover { border-color:#93c5fd; color:#1d4ed8; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin { animation: spin 1s linear infinite; }
@@ -43,7 +71,7 @@
     <a href="/" class="text-sm text-blue-300 hover:text-white transition-colors">← Back to Dashboard</a>
   </nav>
 
-  <main class="max-w-4xl mx-auto px-6 py-8 space-y-6">
+  <main class="max-w-6xl mx-auto px-6 py-8 space-y-6">
 
     <!-- Loading -->
     <div id="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
@@ -65,11 +93,70 @@
     <!-- Content -->
     <div id="content" class="hidden space-y-6">
 
-      <!-- Course header -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <p id="course-code" class="text-sm font-medium text-blue-600 mb-1"></p>
-        <h1 id="course-name" class="text-2xl font-bold text-slate-800"></h1>
-        <p id="section-name" class="text-sm text-slate-400 mt-1"></p>
+      <!-- Course header + grade stats -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-wrap items-start justify-between gap-6">
+        <div>
+          <p id="course-code" class="text-sm font-medium text-blue-600 mb-1"></p>
+          <h1 id="course-name" class="text-2xl font-bold text-slate-800"></h1>
+          <p id="section-name" class="text-sm text-slate-400 mt-1"></p>
+        </div>
+        <div class="flex gap-6 text-center shrink-0">
+          <div>
+            <div id="stat-score" class="text-3xl font-bold text-blue-700">—</div>
+            <div class="text-xs text-slate-500 mt-0.5 uppercase tracking-wide">Current Score</div>
+          </div>
+          <div class="w-px bg-slate-200"></div>
+          <div>
+            <div id="stat-graded" class="text-3xl font-bold text-blue-700">—</div>
+            <div class="text-xs text-slate-500 mt-0.5 uppercase tracking-wide">Graded</div>
+          </div>
+          <div class="w-px bg-slate-200"></div>
+          <div>
+            <div id="stat-missing" class="text-3xl font-bold text-red-500">—</div>
+            <div class="text-xs text-slate-500 mt-0.5 uppercase tracking-wide">Missing</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assignments -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+
+        <!-- Toolbar -->
+        <div class="px-6 py-4 border-b border-slate-100 space-y-3">
+          <div class="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 class="text-lg font-semibold text-slate-800">Assignments</h2>
+              <p id="assign-subtitle" class="text-slate-400 text-sm">Loading…</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="exportCsv()"
+                      class="text-xs font-medium text-slate-600 hover:text-white hover:bg-slate-700
+                             border border-slate-200 hover:border-slate-700 rounded-lg px-3 py-1.5
+                             transition-all duration-150 whitespace-nowrap">
+                Export CSV
+              </button>
+              <input id="assign-filter"
+                     type="text"
+                     placeholder="🔍  Search assignments…"
+                     class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none
+                            focus:ring-2 focus:ring-blue-300 w-52 bg-slate-50" />
+            </div>
+          </div>
+          <!-- Category chips -->
+          <div id="group-chips" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Assignment grid -->
+        <div id="assign-loading" class="flex items-center justify-center py-16 text-slate-400">
+          <svg class="spin w-6 h-6 mr-2 text-blue-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+          <span class="text-sm">Loading assignments…</span>
+        </div>
+        <div id="assign-grid-wrap" class="px-4 pb-4 pt-2 hidden">
+          <div id="assign-grid" class="ag-theme-alpine w-full"></div>
+        </div>
       </div>
 
       <!-- Classmates -->
@@ -79,21 +166,100 @@
             <h2 class="text-lg font-semibold text-slate-800">Classmates</h2>
             <p id="student-count" class="text-slate-400 text-sm"></p>
           </div>
-          <input id="quick-filter"
+          <input id="student-filter"
                  type="text"
                  placeholder="🔍  Filter students…"
-                 class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 w-52 bg-slate-50" />
+                 class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none
+                        focus:ring-2 focus:ring-blue-300 w-52 bg-slate-50" />
         </div>
         <div class="px-4 pb-4 pt-2">
           <div id="student-grid" class="ag-theme-alpine w-full"></div>
         </div>
       </div>
 
-    </div>
+    </div><!-- /content -->
   </main>
 
   <script>
     const COURSE_ID = {{ course_id }};
+    let assignGridApi, studentGridApi;
+    let activeGroup = 'all';
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function scoreColor(s) {
+      if (s == null) return '#94a3b8';
+      if (s >= 90)  return '#16a34a';
+      if (s >= 80)  return '#2563eb';
+      if (s >= 70)  return '#ca8a04';
+      if (s >= 60)  return '#ea580c';
+      return '#dc2626';
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return null;
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function isPast(iso) {
+      return iso && new Date(iso) < new Date();
+    }
+
+    // ── Cell renderers ────────────────────────────────────────────────────────
+    function renderName(p) {
+      const url = p.data.html_url;
+      const inner = url
+        ? `<a href="${url}" target="_blank"
+              class="font-semibold text-slate-800 hover:text-blue-600 hover:underline truncate block"
+           >${p.value}</a>`
+        : `<span class="font-semibold text-slate-800 truncate block">${p.value}</span>`;
+      return `<div class="flex flex-col justify-center h-full leading-tight">${inner}</div>`;
+    }
+
+    function renderDue(p) {
+      const iso = p.value;
+      if (!iso) return `<span class="text-slate-400 text-sm">—</span>`;
+      const label = fmtDate(iso);
+      const overdue = isPast(iso) && p.data.status === 'unsubmitted';
+      return overdue
+        ? `<div class="leading-tight">
+             <span class="text-xs font-semibold text-red-600 block">${label}</span>
+             <span class="text-xs text-red-400">Overdue</span>
+           </div>`
+        : `<span class="text-sm text-slate-700">${label}</span>`;
+    }
+
+    function renderScore(p) {
+      const { score, points_possible } = p.data;
+      if (score == null) return `<span class="text-slate-400 text-sm">—</span>`;
+      return `<span class="text-sm font-semibold text-slate-800">${score} / ${points_possible}</span>`;
+    }
+
+    function renderPct(p) {
+      const s = p.value;
+      if (s == null) return `<span class="text-slate-400 text-sm">—</span>`;
+      const color = scoreColor(s);
+      const pct = Math.min(100, Math.max(0, s));
+      return `<div class="score-wrap">
+                <div class="score-track">
+                  <div class="score-fill" style="width:${pct}%;background:${color}"></div>
+                </div>
+                <span class="score-label" style="color:${color}">${s.toFixed(1)}%</span>
+              </div>`;
+    }
+
+    function renderStatus(p) {
+      const s = p.value;
+      const missing = s === 'unsubmitted' && isPast(p.data.due_at);
+      const map = {
+        graded: ['s-graded', 'Graded'],
+        submitted: ['s-submitted', 'Submitted'],
+        pending_review: ['s-pending', 'Pending Review'],
+      };
+      const [cls, lbl] = missing
+        ? ['s-missing', 'Missing']
+        : (map[s] || ['s-none', 'Not Submitted']);
+      return `<span class="badge ${cls}">${lbl}</span>`;
+    }
 
     function renderStudent(p) {
       const { name, avatar_url, is_self } = p.data;
@@ -104,17 +270,152 @@
       const badge = is_self
         ? `<span class="ml-2 text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full">You</span>`
         : '';
-      return `<div class="flex items-center gap-3 h-full">
-                ${avatar}
-                <span class="font-medium text-slate-800">${name}</span>
-                ${badge}
-              </div>`;
+      return `<div class="flex items-center gap-3 h-full">${avatar}<span class="font-medium text-slate-800">${name}</span>${badge}</div>`;
     }
 
-    let gridApi;
+    // ── Group chips ────────────────────────────────────────────────────────────
+    function buildChips(assignments) {
+      const groups = ['all', ...new Set(assignments.map(a => a.group))];
+      document.getElementById('group-chips').innerHTML = groups.map(g => {
+        const on = g === activeGroup;
+        return `<button onclick="filterGroup('${g}')" data-group="${g}"
+                        class="chip ${on ? 'chip-on' : 'chip-off'}"
+                >${g === 'all' ? 'All' : g}</button>`;
+      }).join('');
+    }
 
-    function initGrid(students) {
-      gridApi = agGrid.createGrid(
+    function filterGroup(group) {
+      activeGroup = group;
+      document.querySelectorAll('#group-chips .chip').forEach(btn => {
+        btn.className = `chip ${btn.dataset.group === group ? 'chip-on' : 'chip-off'}`;
+      });
+      if (group === 'all') {
+        assignGridApi.setFilterModel({});
+      } else {
+        assignGridApi.setFilterModel({
+          group: { filterType: 'text', type: 'equals', filter: group },
+        });
+      }
+    }
+
+    // ── Assignment grid ────────────────────────────────────────────────────────
+    function initAssignGrid(assignments) {
+      const colDefs = [
+        {
+          field: 'name',
+          headerName: 'Assignment',
+          flex: 3,
+          minWidth: 200,
+          cellRenderer: renderName,
+          sortable: true,
+          filter: 'agTextColumnFilter',
+          floatingFilter: true,
+        },
+        {
+          field: 'group',
+          headerName: 'Category',
+          width: 170,
+          sortable: true,
+          filter: 'agTextColumnFilter',
+          floatingFilter: true,
+        },
+        {
+          field: 'due_at',
+          headerName: 'Due Date',
+          width: 150,
+          cellRenderer: renderDue,
+          sortable: true,
+          filter: 'agDateColumnFilter',
+          floatingFilter: true,
+          comparator: (a, b) => {
+            if (!a && !b) return 0;
+            if (!a) return 1;
+            if (!b) return -1;
+            return new Date(a) - new Date(b);
+          },
+        },
+        {
+          field: 'points_possible',
+          headerName: 'Pts',
+          width: 80,
+          sortable: true,
+          filter: 'agNumberColumnFilter',
+          floatingFilter: true,
+          valueFormatter: p => p.value ?? '—',
+        },
+        {
+          headerName: 'Score',
+          width: 130,
+          cellRenderer: renderScore,
+          sortable: true,
+          valueGetter: p => p.data.score,
+          filter: 'agNumberColumnFilter',
+          floatingFilter: true,
+        },
+        {
+          field: 'pct',
+          headerName: '%',
+          width: 180,
+          cellRenderer: renderPct,
+          sortable: true,
+          filter: 'agNumberColumnFilter',
+          floatingFilter: true,
+          sort: 'asc',
+        },
+        {
+          field: 'status',
+          headerName: 'Status',
+          width: 145,
+          cellRenderer: renderStatus,
+          sortable: true,
+          filter: 'agTextColumnFilter',
+          floatingFilter: true,
+        },
+      ];
+
+      assignGridApi = agGrid.createGrid(
+        document.getElementById('assign-grid'),
+        {
+          columnDefs: colDefs,
+          rowData: assignments,
+          defaultColDef: { resizable: true },
+          rowHeight: 56,
+          headerHeight: 44,
+          floatingFiltersHeight: 36,
+          animateRows: true,
+          domLayout: 'autoHeight',
+          suppressCellFocus: true,
+          enableCellTextSelection: true,
+        }
+      );
+
+      buildChips(assignments);
+
+      const graded  = assignments.filter(a => a.status === 'graded').length;
+      const missing = assignments.filter(
+        a => a.status === 'unsubmitted' && isPast(a.due_at)
+      ).length;
+
+      document.getElementById('stat-graded').textContent  = `${graded}/${assignments.length}`;
+      document.getElementById('stat-missing').textContent = missing;
+      document.getElementById('assign-subtitle').textContent =
+        `${assignments.length} assignment${assignments.length !== 1 ? 's' : ''} · ${graded} graded · ${missing} missing`;
+
+      document.getElementById('assign-loading').classList.add('hidden');
+      document.getElementById('assign-grid-wrap').classList.remove('hidden');
+    }
+
+    function exportCsv() {
+      assignGridApi?.exportDataAsCsv({ fileName: 'assignments.csv' });
+    }
+
+    document.getElementById('assign-filter').addEventListener('input', e => {
+      assignGridApi?.setGridOption('quickFilterText', e.target.value);
+    });
+
+    // ── Student grid ──────────────────────────────────────────────────────────
+    function initStudentGrid(students) {
+      studentGridApi = agGrid.createGrid(
         document.getElementById('student-grid'),
         {
           columnDefs: [
@@ -140,29 +441,46 @@
       );
     }
 
-    document.getElementById('quick-filter').addEventListener('input', (e) => {
-      gridApi?.setGridOption('quickFilterText', e.target.value);
+    document.getElementById('student-filter').addEventListener('input', e => {
+      studentGridApi?.setGridOption('quickFilterText', e.target.value);
     });
 
+    // ── Load data ─────────────────────────────────────────────────────────────
     async function load() {
       try {
-        const res  = await fetch(`/api/course/${COURSE_ID}`);
-        const data = await res.json();
+        const [courseRes, assignRes] = await Promise.all([
+          fetch(`/api/course/${COURSE_ID}`),
+          fetch(`/api/course/${COURSE_ID}/assignments`),
+        ]);
+        const courseData = await courseRes.json();
+        const assignData = await assignRes.json();
 
-        if (data.error) {
+        if (courseData.error) {
           show('error');
-          document.getElementById('error-message').textContent = data.message;
+          document.getElementById('error-message').textContent = courseData.message;
           return;
         }
 
-        document.title = data.course.name;
-        document.getElementById('course-code').textContent  = data.course.course_code;
-        document.getElementById('course-name').textContent  = data.course.name;
-        document.getElementById('section-name').textContent = data.section.name;
+        document.title = courseData.course.name;
+        document.getElementById('course-code').textContent  = courseData.course.course_code;
+        document.getElementById('course-name').textContent  = courseData.course.name;
+        document.getElementById('section-name').textContent = courseData.section.name;
         document.getElementById('student-count').textContent =
-          `${data.students.length} student${data.students.length !== 1 ? 's' : ''}`;
+          `${courseData.students.length} student${courseData.students.length !== 1 ? 's' : ''}`;
 
-        initGrid(data.students);
+        const score = courseData.course.current_score;
+        document.getElementById('stat-score').textContent = score != null ? score.toFixed(1) + '%' : '—';
+
+        initStudentGrid(courseData.students);
+
+        if (!assignData.error) {
+          initAssignGrid(assignData.assignments);
+        } else {
+          document.getElementById('assign-loading').innerHTML =
+            `<span class="text-sm text-slate-400">Could not load assignments.</span>`;
+          document.getElementById('assign-subtitle').textContent = 'Unavailable';
+        }
+
         show('content');
 
       } catch (err) {

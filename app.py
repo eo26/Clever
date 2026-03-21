@@ -147,7 +147,8 @@ def api_course(course_id: int):
         if not my_enrollments:
             return jsonify({"error": "not_enrolled", "message": "Not enrolled."}), 404
 
-        section_id = my_enrollments[0]["course_section_id"]
+        enrollment = my_enrollments[0]
+        section_id = enrollment["course_section_id"]
         section = client.get_section(section_id)
 
         # All students in the same section.
@@ -169,11 +170,15 @@ def api_course(course_id: int):
             })
         students.sort(key=lambda s: s["sortable_name"].lower())
 
+        grades = enrollment.get("grades", {})
+
         return jsonify({
             "course": {
                 "id": course_id,
                 "name": course.get("name", ""),
                 "course_code": course.get("course_code", ""),
+                "current_score": grades.get("current_score"),
+                "final_score": grades.get("final_score"),
             },
             "section": {
                 "id": section_id,
@@ -181,6 +186,51 @@ def api_course(course_id: int):
             },
             "students": students,
         })
+
+    except CanvasAuthError:
+        return jsonify({"error": "auth", "message": "Invalid or expired API token."}), 401
+    except CanvasAPIError as exc:
+        return jsonify({"error": "api", "message": str(exc)}), 500
+    except Exception as exc:  # pylint: disable=broad-except
+        return jsonify({"error": "unknown", "message": str(exc)}), 500
+
+
+@app.route("/api/course/<int:course_id>/assignments")
+def api_course_assignments(course_id: int):
+    """Return assignments with submission data for a course."""
+    try:
+        client = CanvasClient(BASE_URL, ACCESS_TOKEN)
+
+        groups = client.get_assignment_groups(course_id)
+        group_map = {g["id"]: g["name"] for g in groups}
+
+        assignments = client.get_assignments(course_id, params={
+            "include[]": ["submission"],
+            "per_page": 100,
+            "order_by": "due_at",
+        })
+
+        formatted = []
+        for a in assignments:
+            sub = a.get("submission") or {}
+            score = sub.get("score")
+            pts = a.get("points_possible") or 0
+            pct = round(score / pts * 100, 1) if (score is not None and pts > 0) else None
+            formatted.append({
+                "id": a["id"],
+                "name": a.get("name", ""),
+                "group": group_map.get(a.get("assignment_group_id"), "Other"),
+                "group_id": a.get("assignment_group_id"),
+                "due_at": a.get("due_at"),
+                "points_possible": pts,
+                "score": score,
+                "pct": pct,
+                "status": sub.get("workflow_state", "unsubmitted"),
+                "submitted_at": sub.get("submitted_at"),
+                "html_url": a.get("html_url", ""),
+            })
+
+        return jsonify({"assignments": formatted})
 
     except CanvasAuthError:
         return jsonify({"error": "auth", "message": "Invalid or expired API token."}), 401

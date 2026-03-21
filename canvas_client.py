@@ -237,6 +237,21 @@ class CanvasClient:
         data = self._get(f"api/v1/courses/{course_id}/grading_periods")
         return data.get("grading_periods", [])
 
+    def get_assignment_groups(
+        self,
+        course_id: Union[str, int],
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve assignment groups (categories) for a course.
+
+        Args:
+            course_id (str|int): The ID of the course.
+
+        Returns:
+            List[Dict[str, Any]]: Assignment group records with id and name.
+        """
+        return self._get_all(f"api/v1/courses/{course_id}/assignment_groups")
+
     def get_user_enrollments(
         self,
         user_id: Union[str, int],
