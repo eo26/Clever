@@ -95,7 +95,8 @@
         <div class="flex-1 min-w-0">
           <h1 id="student-name" class="text-2xl font-bold text-slate-800 truncate"></h1>
           <p id="student-email" class="text-sm text-slate-400 mt-0.5"></p>
-          <p class="text-sm text-slate-400">Broward County Public Schools</p>
+          <!-- Detail chips -->
+          <div id="profile-chips" class="flex flex-wrap gap-2 mt-2"></div>
         </div>
 
         <!-- Stats -->
@@ -188,6 +189,18 @@
               </div>`;
     }
 
+    function renderMissing(p) {
+      const n = p.value;
+      if (n == null || n === 0) return `<span class="text-slate-300 text-sm font-medium">—</span>`;
+      return `<span class="inline-flex items-center gap-1 text-xs font-bold text-red-600
+                            bg-red-50 border border-red-200 rounded-full px-2.5 py-1">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                ${n} missing
+              </span>`;
+    }
+
     function renderAction(p) {
       const id = p.data.id;
       return `<div class="flex items-center gap-2 h-full">
@@ -274,9 +287,17 @@
         {
           field: 'current_score',
           headerName: 'Score',
-          width: 210,
+          width: 200,
           cellRenderer: renderScore,
           sortable: true,
+        },
+        {
+          field: 'missing_count',
+          headerName: 'Missing',
+          width: 120,
+          cellRenderer: renderMissing,
+          sortable: true,
+          sort: 'desc',
         },
         {
           headerName: '',
@@ -341,6 +362,22 @@
 
         document.getElementById('student-name').textContent  = student.name;
         document.getElementById('student-email').textContent = student.email || '';
+
+        // Profile detail chips
+        const chipDefs = [
+          student.login_id    && { icon: '🪪', label: student.login_id },
+          student.sis_user_id && student.sis_user_id !== student.login_id
+                              && { icon: '#', label: student.sis_user_id },
+          student.time_zone   && { icon: '🕐', label: student.time_zone.replace(/_/g, ' ') },
+          student.locale      && { icon: '🌐', label: student.locale.toUpperCase() },
+          student.bio         && { icon: '📝', label: student.bio },
+        ].filter(Boolean);
+        document.getElementById('profile-chips').innerHTML = chipDefs.map(c =>
+          `<span class="inline-flex items-center gap-1 text-xs text-slate-500 bg-slate-100
+                        rounded-full px-2.5 py-1 max-w-xs truncate">
+             <span>${c.icon}</span><span class="truncate">${c.label}</span>
+           </span>`
+        ).join('');
 
         // Stats
         const scores  = courses.filter(c => c.current_score != null).map(c => c.current_score);

@@ -252,6 +252,37 @@ class CanvasClient:
         """
         return self._get_all(f"api/v1/courses/{course_id}/assignment_groups")
 
+    def get_user_profile(self) -> Dict[str, Any]:
+        """
+        Retrieve the extended profile for the currently authenticated user.
+
+        Returns:
+            Dict[str, Any]: Profile fields including login_id, short_name,
+                bio, time_zone, locale, sis_user_id, and primary_email.
+        """
+        return self._get("api/v1/users/self/profile")
+
+    def get_missing_submissions(
+        self,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all missing submissions for the authenticated student.
+
+        Args:
+            params (dict, optional): Query parameters (e.g., per_page,
+                include[], filter[]).
+
+        Returns:
+            List[Dict[str, Any]]: Assignment objects that are past due and
+                unsubmitted. Each record contains ``course_id``, ``id``,
+                ``name``, ``due_at``, and ``points_possible``.
+        """
+        merged = {"per_page": 100}
+        if params:
+            merged.update(params)
+        return self._get_all("api/v1/users/self/missing_submissions", params=merged)
+
     def get_todo_items(
         self,
         params: Optional[Dict[str, Any]] = None,

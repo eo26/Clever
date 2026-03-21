@@ -59,6 +59,17 @@ def api_dashboard():
         user = client.get_user_self()
         user_id = user["id"]
 
+        # Fetch profile and missing submissions alongside courses.
+        profile = client.get_user_profile()
+        missing_subs = client.get_missing_submissions()
+
+        # Build a per-course missing count before iterating courses.
+        missing_by_course: dict = {}
+        for sub in missing_subs:
+            cid = sub.get("course_id")
+            if cid:
+                missing_by_course[cid] = missing_by_course.get(cid, 0) + 1
+
         courses = client.get_courses(params={
             "per_page": 100,
             "enrollment_type": "student",
@@ -125,6 +136,7 @@ def api_dashboard():
                 "final_grade": enrollment.get("computed_final_grade"),
                 "final_score": enrollment.get("computed_final_score"),
                 "image_url": course.get("image_download_url"),
+                "missing_count": missing_by_course.get(course["id"], 0),
                 "quarters": quarters,
             })
 
@@ -133,9 +145,16 @@ def api_dashboard():
         return jsonify({
             "student": {
                 "id": user_id,
-                "name": user.get("name"),
-                "avatar_url": user.get("avatar_url"),
-                "email": user.get("email") or user.get("login_id"),
+                "name": profile.get("name") or user.get("name"),
+                "short_name": profile.get("short_name", ""),
+                "sortable_name": profile.get("sortable_name", ""),
+                "avatar_url": profile.get("avatar_url") or user.get("avatar_url"),
+                "email": profile.get("primary_email") or user.get("email") or user.get("login_id"),
+                "login_id": profile.get("login_id", ""),
+                "sis_user_id": profile.get("sis_user_id", ""),
+                "bio": profile.get("bio") or "",
+                "time_zone": profile.get("time_zone", ""),
+                "locale": profile.get("locale") or "",
             },
             "courses": formatted_courses,
         })
