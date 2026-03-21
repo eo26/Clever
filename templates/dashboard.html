@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Portal</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- AG Grid Community -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-alpine.css" />
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
+
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+
+    /* ---- Grade badge colours ---- */
+    .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:12px; font-weight:600; }
+    .grade-a  { background:#dcfce7; color:#15803d; }
+    .grade-b  { background:#dbeafe; color:#1d4ed8; }
+    .grade-c  { background:#fef9c3; color:#a16207; }
+    .grade-d  { background:#ffedd5; color:#c2410c; }
+    .grade-f  { background:#fee2e2; color:#b91c1c; }
+    .grade-na { background:#f1f5f9; color:#94a3b8; }
+
+    /* ---- AG Grid overrides ---- */
+    .ag-theme-alpine {
+      --ag-font-family: 'Inter', sans-serif;
+      --ag-font-size: 14px;
+      --ag-header-background-color: #f8fafc;
+      --ag-header-foreground-color: #64748b;
+      --ag-row-hover-color: #f0f9ff;
+      --ag-border-color: #e2e8f0;
+      --ag-cell-horizontal-padding: 16px;
+    }
+    .ag-theme-alpine .ag-header-cell-label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .ag-theme-alpine .ag-row { cursor: pointer; }
+
+    /* ---- Score bar ---- */
+    .score-wrap  { display:flex; align-items:center; gap:8px; height:100%; }
+    .score-track { flex:1; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; max-width:80px; }
+    .score-fill  { height:100%; border-radius:3px; transition:width .4s ease; }
+    .score-label { font-size:13px; font-weight:600; min-width:44px; }
+
+    /* ---- Spinner ---- */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- ── Navbar ────────────────────────────────────────────────────── -->
+  <nav class="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-yellow-400 rounded-md flex items-center justify-center font-bold text-blue-900 text-xs tracking-tight">BC</div>
+      <span class="font-semibold text-base">Broward Student Portal</span>
+    </div>
+    <span id="nav-user" class="text-sm text-blue-300"></span>
+  </nav>
+
+  <!-- ── Main ──────────────────────────────────────────────────────── -->
+  <main class="max-w-6xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- Loading -->
+    <div id="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
+      <svg class="spin w-10 h-10 mb-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+      </svg>
+      <p class="text-sm">Loading student data…</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-state" class="hidden">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+        <div class="text-4xl mb-3">⚠️</div>
+        <p class="font-semibold text-red-700 text-lg" id="error-message">Connection failed</p>
+        <p class="text-red-500 text-sm mt-1">Check your API token in <code class="bg-red-100 px-1 rounded">app.py</code> and restart the server.</p>
+      </div>
+    </div>
+
+    <!-- Content (hidden until data loads) -->
+    <div id="content" class="hidden space-y-6">
+
+      <!-- ── Student profile card ───────────────────────────────────── -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-wrap items-center gap-6">
+
+        <!-- Avatar -->
+        <div class="relative">
+          <img id="student-avatar" src="" alt="Avatar"
+               class="w-20 h-20 rounded-full object-cover ring-4 ring-blue-100 hidden" />
+          <div id="avatar-fallback"
+               class="w-20 h-20 rounded-full bg-blue-700 text-white text-2xl font-bold flex items-center justify-center select-none">
+          </div>
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <h1 id="student-name" class="text-2xl font-bold text-slate-800 truncate"></h1>
+          <p id="student-email" class="text-sm text-slate-400 mt-0.5"></p>
+          <p class="text-sm text-slate-400">Broward County Public Schools</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="flex gap-8 text-center shrink-0">
+          <div>
+            <div id="stat-classes" class="text-3xl font-bold text-blue-700">—</div>
+            <div class="text-xs text-slate-500 mt-0.5 uppercase tracking-wide">Classes</div>
+          </div>
+          <div class="w-px bg-slate-200"></div>
+          <div>
+            <div id="stat-avg" class="text-3xl font-bold text-blue-700">—</div>
+            <div class="text-xs text-slate-500 mt-0.5 uppercase tracking-wide">Avg Score</div>
+          </div>
+          <div class="w-px bg-slate-200"></div>
+          <div>
+            <div id="stat-passing" class="text-3xl font-bold text-emerald-600">—</div>
+            <div class="text-xs text-slate-500 mt-0.5 uppercase tracking-wide">Passing</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Class schedule ──────────────────────────────────────────── -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+
+        <!-- Table header bar -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-800">Current Classes</h2>
+            <p class="text-slate-400 text-sm">Click any row to view assignments &amp; full details</p>
+          </div>
+          <input id="quick-filter"
+                 type="text"
+                 placeholder="🔍  Filter classes…"
+                 class="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 w-52 bg-slate-50" />
+        </div>
+
+        <!-- AG Grid -->
+        <div class="px-4 pb-4 pt-2">
+          <div id="course-grid" class="ag-theme-alpine w-full"></div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+
+  <script>
+    // ── Helpers ────────────────────────────────────────────────────────
+    function gradeClass(g) {
+      if (!g) return 'grade-na';
+      const l = g.trim()[0].toUpperCase();
+      return { A:'grade-a', B:'grade-b', C:'grade-c', D:'grade-d', F:'grade-f' }[l] || 'grade-na';
+    }
+
+    function scoreColor(s) {
+      if (s == null) return '#94a3b8';
+      if (s >= 90)  return '#16a34a';
+      if (s >= 80)  return '#2563eb';
+      if (s >= 70)  return '#ca8a04';
+      if (s >= 60)  return '#ea580c';
+      return '#dc2626';
+    }
+
+    // ── Cell renderers ─────────────────────────────────────────────────
+    function renderCourseName(p) {
+      return `<div class="flex flex-col justify-center h-full leading-tight">
+                <span class="font-semibold text-slate-800 group-hover:text-blue-600">${p.data.name}</span>
+                <span class="text-xs text-slate-400">${p.data.course_code || ''}</span>
+              </div>`;
+    }
+
+    function renderGrade(p) {
+      const g = p.value;
+      return `<span class="badge ${gradeClass(g)}">${g || '—'}</span>`;
+    }
+
+    function renderScore(p) {
+      const s = p.value;
+      if (s == null) return `<span class="text-slate-400 text-sm">—</span>`;
+      const color = scoreColor(s);
+      const pct   = Math.min(100, Math.max(0, s));
+      return `<div class="score-wrap">
+                <div class="score-track">
+                  <div class="score-fill" style="width:${pct}%;background:${color}"></div>
+                </div>
+                <span class="score-label" style="color:${color}">${s.toFixed(1)}%</span>
+              </div>`;
+    }
+
+    function renderAction(p) {
+      return `<button
+                onclick="event.stopPropagation(); openCourse(${p.data.id})"
+                class="text-xs font-medium text-blue-600 hover:text-white hover:bg-blue-600
+                       border border-blue-200 hover:border-blue-600
+                       rounded-lg px-3 py-1.5 transition-all duration-150 whitespace-nowrap">
+                View Details →
+              </button>`;
+    }
+
+    function openCourse(id) {
+      // Detail page — wired up in the next step
+      alert(`Course detail page for ID ${id} coming soon!`);
+    }
+
+    // ── AG Grid ────────────────────────────────────────────────────────
+    const colDefs = [
+      {
+        field: 'name',
+        headerName: 'Course',
+        flex: 3,
+        cellRenderer: renderCourseName,
+        sortable: true,
+        filter: true,
+        minWidth: 220,
+      },
+      {
+        field: 'current_grade',
+        headerName: 'Grade',
+        width: 110,
+        cellRenderer: renderGrade,
+        sortable: true,
+        comparator: (a, b) => (a || 'ZZ').localeCompare(b || 'ZZ'),
+      },
+      {
+        field: 'current_score',
+        headerName: 'Score',
+        width: 190,
+        cellRenderer: renderScore,
+        sortable: true,
+        sort: 'desc',
+      },
+      {
+        field: 'final_grade',
+        headerName: 'Final Grade',
+        width: 120,
+        cellRenderer: renderGrade,
+        sortable: true,
+      },
+      {
+        headerName: '',
+        width: 140,
+        cellRenderer: renderAction,
+        sortable: false,
+        filter: false,
+        suppressMovable: true,
+        resizable: false,
+      },
+    ];
+
+    let gridApi;
+
+    function initGrid(courses) {
+      gridApi = agGrid.createGrid(
+        document.getElementById('course-grid'),
+        {
+          columnDefs: colDefs,
+          rowData: courses,
+          defaultColDef: { resizable: true },
+          rowHeight: 60,
+          headerHeight: 44,
+          animateRows: true,
+          domLayout: 'autoHeight',
+          onRowClicked: (e) => {
+            if (!e.event.target.closest('button')) openCourse(e.data.id);
+          },
+        }
+      );
+    }
+
+    document.getElementById('quick-filter').addEventListener('input', (e) => {
+      gridApi?.setGridOption('quickFilterText', e.target.value);
+    });
+
+    // ── Load data ──────────────────────────────────────────────────────
+    async function load() {
+      try {
+        const res  = await fetch('/api/dashboard');
+        const data = await res.json();
+
+        if (data.error) {
+          show('error');
+          document.getElementById('error-message').textContent = data.message;
+          return;
+        }
+
+        const { student, courses } = data;
+
+        // Nav
+        document.getElementById('nav-user').textContent = student.name;
+
+        // Avatar
+        const img      = document.getElementById('student-avatar');
+        const fallback = document.getElementById('avatar-fallback');
+        if (student.avatar_url && !student.avatar_url.includes('/images/messages/')) {
+          img.src = student.avatar_url;
+          img.classList.remove('hidden');
+          fallback.classList.add('hidden');
+        } else {
+          fallback.textContent = student.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        }
+
+        document.getElementById('student-name').textContent  = student.name;
+        document.getElementById('student-email').textContent = student.email || '';
+
+        // Stats
+        const scores  = courses.filter(c => c.current_score != null).map(c => c.current_score);
+        const avg     = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
+        const passing = courses.filter(c => c.current_score != null && c.current_score >= 60).length;
+
+        document.getElementById('stat-classes').textContent = courses.length || '—';
+        document.getElementById('stat-avg').textContent     = avg != null ? avg.toFixed(1) + '%' : '—';
+        document.getElementById('stat-passing').textContent = scores.length ? `${passing}/${courses.length}` : '—';
+
+        initGrid(courses);
+        show('content');
+
+      } catch (err) {
+        show('error');
+        document.getElementById('error-message').textContent = 'Could not reach the server.';
+        console.error(err);
+      }
+    }
+
+    function show(panel) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error-state').classList.add('hidden');
+      document.getElementById('content').classList.add('hidden');
+      document.getElementById(panel === 'content' ? 'content' : panel + '-state').classList.remove('hidden');
+    }
+
+    load();
+  </script>
+</body>
+</html>
