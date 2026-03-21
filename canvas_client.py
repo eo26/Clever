@@ -179,3 +179,40 @@ class CanvasClient:
             List[Dict[str, Any]]: The list of assignments.
         """
         return self._get_all(f"api/v1/courses/{course_id}/assignments", params=params)
+
+    def get_grading_periods(self, course_id: Union[str, int]) -> List[Dict[str, Any]]:
+        """
+        Retrieve grading periods for a specific course (e.g., Q1, Q2, Q3, Q4).
+
+        Args:
+            course_id (str|int): The ID of the course.
+
+        Returns:
+            List[Dict[str, Any]]: The list of grading periods, each containing
+                id, title, start_date, end_date, and close_date.
+        """
+        data = self._get(f"api/v1/courses/{course_id}/grading_periods")
+        return data.get("grading_periods", [])
+
+    def get_user_enrollments(
+        self,
+        user_id: Union[str, int],
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all enrollments for a specific user, including grade data.
+
+        Args:
+            user_id (str|int): The Canvas user ID or 'self'.
+            params (dict, optional): Query parameters (e.g., state[], type[]).
+
+        Returns:
+            List[Dict[str, Any]]: Enrollment records. Each record contains a
+                ``grades`` sub-object with ``current_score``, ``final_score``,
+                ``current_grade``, and ``final_grade`` fields (letter grades
+                are only populated when the course has a grading scheme).
+        """
+        merged_params = {"include[]": "grades", "per_page": 100}
+        if params:
+            merged_params.update(params)
+        return self._get_all(f"api/v1/users/{user_id}/enrollments", params=merged_params)

@@ -70,17 +70,73 @@ try:
         
         combined[label] = assignments
 
-    # Save consolidated data
+    # [210] Retrieve course grades for the user (all terms, includes concluded)
+    # include[]=grades ensures the grades sub-object is populated.
+    # state[]=active&state[]=completed pulls both current and prior-term enrollments.
+    all_enrollments = client.get_user_enrollments(
+        USER_ID,
+        params={"state[]": ["active", "completed"]},
+    )
+    print(f"Retrieved grades for {len(all_enrollments)} enrollments.")
+
+    # Build a lookup: course_id -> enrollment grades object
+    enrollment_by_course: dict = {}
+    for enr in all_enrollments:
+        cid = str(enr.get("course_id"))
+        if cid not in enrollment_by_course:
+            enrollment_by_course[cid] = enr
+
+    # [220] Fetch per-grading-period (Q1, Q2, …) grades for each core course
+    print("\n--- Fetching Grading Periods & Quarter Grades ---")
+    grades_by_course: dict = {}
+    for label, cid in zip(labels, course_ids):
+        grading_periods = client.get_grading_periods(cid)
+        period_grades: dict = {}
+
+        for period in grading_periods:
+            pid = period["id"]
+            title = period["title"]
+            # Enrollments filtered to a grading period return per-period grades
+            period_enrollments = client.get_enrollments(
+                cid,
+                params={
+                    "user_id": USER_ID,
+                    "grading_period_id": pid,
+                    "include[]": "grades",
+                    "per_page": 100,
+                },
+            )
+            if period_enrollments:
+                g = period_enrollments[0].get("grades", {})
+                period_grades[title] = {
+                    "current_score": g.get("current_score"),
+                    "final_score": g.get("final_score"),
+                    # letter grades are non-null only when course has a grading scheme
+                    "current_grade": g.get("current_grade"),
+                    "final_grade": g.get("final_grade"),
+                }
+            else:
+                period_grades[title] = None
+
+        # Overall grade from the user's enrollment record
+        overall = enrollment_by_course.get(cid, {}).get("grades", {})
+        grades_by_course[label] = {
+            "overall": {
+                "current_score": overall.get("current_score"),
+                "final_score": overall.get("final_score"),
+                "current_grade": overall.get("current_grade"),
+                "final_grade": overall.get("final_grade"),
+            },
+            "by_period": period_grades,
+        }
+        print(f"  {label}: {len(grading_periods)} grading period(s) found.")
+
+    combined["grades"] = grades_by_course
+
+    # Re-save consolidated data with grades included
     with open('combined_json', 'w') as f:
         json.dump(combined, f, indent=4)
-    print("\nConsolidated assignments saved to 'combined_json'")
-
-    # [210] Retrieve course grades for the user
-    # Note: Using 'self' enrollment retrieval via CanvasClient if needed, 
-    # but original script used call_endpoint(endpoints_dict.get('course_grades'))
-    # which was f"api/v1/users/{USER_ID}/enrollments"
-    course_grades = client._get(f"api/v1/users/{USER_ID}/enrollments", params={"per_page": 100})
-    print(f"Retrieved grades for {len(course_grades)} enrollments.")
+    print("\nGrades added to 'combined_json'")
 
 except CanvasAPIError as e:
     print(f"\nAn API error occurred: {e}")
