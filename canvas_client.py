@@ -303,6 +303,74 @@ class CanvasClient:
             merged.update(params)
         return self._get_all("api/v1/users/self/todo_items", params=merged)
 
+    def get_student_submissions(
+        self,
+        course_id: Union[str, int],
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all submissions for the authenticated student in a course.
+
+        Args:
+            course_id (str|int): The ID of the course.
+            params (dict, optional): Extra query parameters (e.g., include[]).
+
+        Returns:
+            List[Dict[str, Any]]: Submission records keyed by assignment_id.
+                Each record may contain a ``submission_comments`` list when
+                ``include[]=submission_comments`` is passed.
+        """
+        merged: Dict[str, Any] = {"student_ids[]": "self", "per_page": 100}
+        if params:
+            merged.update(params)
+        return self._get_all(
+            f"api/v1/courses/{course_id}/students/submissions", params=merged
+        )
+
+    def get_announcements(
+        self,
+        context_codes: List[str],
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve announcements for one or more courses.
+
+        Args:
+            context_codes (List[str]): Canvas context codes, e.g.
+                ``["course_123", "course_456"]``.
+            params (dict, optional): Extra query parameters.
+
+        Returns:
+            List[Dict[str, Any]]: Announcement records with ``title``,
+                ``message``, ``posted_at``, ``context_code``, and
+                ``html_url``.
+        """
+        merged: Dict[str, Any] = {"context_codes[]": context_codes, "per_page": 50}
+        if params:
+            merged.update(params)
+        return self._get_all("api/v1/announcements", params=merged)
+
+    def get_upcoming_events(
+        self,
+        params: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve upcoming calendar events and assignment due dates for the
+        authenticated user across all courses.
+
+        Args:
+            params (dict, optional): Extra query parameters.
+
+        Returns:
+            List[Dict[str, Any]]: Event records with ``title``, ``start_at``,
+                ``context_code``, ``context_name``, ``html_url``, and an
+                optional ``assignment`` sub-object for assignment events.
+        """
+        merged: Dict[str, Any] = {"per_page": 50}
+        if params:
+            merged.update(params)
+        return self._get_all("api/v1/users/self/upcoming_events", params=merged)
+
     def get_user_enrollments(
         self,
         user_id: Union[str, int],

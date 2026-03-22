@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activity Feed</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+
+    .toggle-btn {
+      padding: 6px 16px; border-radius: 9999px; font-size: 13px; font-weight: 500;
+      cursor: pointer; border: 1px solid; transition: all 0.15s; white-space: nowrap;
+    }
+    .toggle-on  { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+    .toggle-off { background: white; color: #64748b; border-color: #e2e8f0; }
+    .toggle-off:hover { border-color: #93c5fd; color: #1d4ed8; }
+
+    .sub-btn {
+      padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: 1px solid; transition: all 0.15s; white-space: nowrap;
+    }
+    .sub-on  { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .sub-off { background: white; color: #94a3b8; border-color: #e2e8f0; }
+    .sub-off:hover { border-color: #93c5fd; color: #1d4ed8; }
+
+    .item-announcement { border-left: 3px solid #f59e0b; }
+    .item-assignment    { border-left: 3px solid #3b82f6; }
+    .item-event         { border-left: 3px solid #8b5cf6; }
+
+    .badge-announcement { background: #fef3c7; color: #92400e; }
+    .badge-assignment   { background: #dbeafe; color: #1d4ed8; }
+    .badge-event        { background: #ede9fe; color: #6d28d9; }
+
+    .group-header {
+      position: sticky; top: 0; z-index: 10;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 8px 24px;
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #64748b;
+    }
+
+    .announcement-body { display: none; }
+    .announcement-body.open { display: block; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-lg">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-yellow-400 rounded-md flex items-center justify-center font-bold text-blue-900 text-xs tracking-tight">BC</div>
+      <span class="font-semibold text-base">Broward Student Portal</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <a href="/activity" class="text-sm text-white font-medium border-b border-white/40 pb-0.5">Activity</a>
+      <a href="/" class="text-sm text-blue-300 hover:text-white transition-colors">← Dashboard</a>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6 py-8 space-y-6">
+
+    <!-- Loading -->
+    <div id="loading" class="flex flex-col items-center justify-center py-32 text-slate-400">
+      <svg class="spin w-10 h-10 mb-4 text-blue-400" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+      </svg>
+      <p class="text-sm">Loading activity…</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-state" class="hidden">
+      <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+        <div class="text-4xl mb-3">⚠️</div>
+        <p class="font-semibold text-red-700 text-lg" id="error-message">Failed to load activity</p>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content" class="hidden space-y-4">
+
+      <!-- Controls bar -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Activity Feed</h1>
+          <p id="feed-subtitle" class="text-sm text-slate-400 mt-0.5"></p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Group-by toggle -->
+          <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full p-1">
+            <button id="btn-by-class" onclick="setGroupBy('class')" class="toggle-btn toggle-on">By Class</button>
+            <button id="btn-by-date"  onclick="setGroupBy('date')"  class="toggle-btn toggle-off">By Date</button>
+          </div>
+          <!-- Date sub-options (shown when By Date is active) -->
+          <div id="date-sub" class="hidden flex items-center gap-1">
+            <button id="btn-days"   onclick="setDateGroup('days')"   class="sub-btn sub-on">Days</button>
+            <button id="btn-weeks"  onclick="setDateGroup('weeks')"  class="sub-btn sub-off">Weeks</button>
+            <button id="btn-months" onclick="setDateGroup('months')" class="sub-btn sub-off">Months</button>
+          </div>
+          <!-- Type filter -->
+          <div class="flex items-center gap-1">
+            <button id="flt-all"          onclick="setTypeFilter('all')"          class="sub-btn sub-on">All</button>
+            <button id="flt-announcement" onclick="setTypeFilter('announcement')" class="sub-btn sub-off">Announcements</button>
+            <button id="flt-assignment"   onclick="setTypeFilter('assignment')"   class="sub-btn sub-off">Assignments</button>
+            <button id="flt-event"        onclick="setTypeFilter('event')"        class="sub-btn sub-off">Events</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed -->
+      <div id="feed" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div id="feed-list"></div>
+        <div id="empty-state" class="hidden py-16 text-center text-slate-400">
+          <p class="text-sm">No items to show.</p>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+
+  <script>
+    let allItems    = [];
+    let groupBy     = 'class';   // 'class' | 'date'
+    let dateGroup   = 'days';    // 'days' | 'weeks' | 'months'
+    let typeFilter  = 'all';     // 'all' | 'announcement' | 'assignment' | 'event'
+
+    // ── Formatting helpers ────────────────────────────────────────────────────
+    function fmtDate(iso) {
+      if (!iso) return null;
+      return new Date(iso).toLocaleDateString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      });
+    }
+
+    function fmtShort(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function relativeDate(iso) {
+      if (!iso) return '';
+      const diff = Math.round((new Date(iso) - new Date()) / 86400000);
+      if (diff < 0 && diff > -1) return 'Today';
+      if (diff < 0)  return `${Math.abs(diff)}d ago`;
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Tomorrow';
+      if (diff <= 6) return `In ${diff} days`;
+      return fmtShort(iso);
+    }
+
+    // ── Group key helpers ─────────────────────────────────────────────────────
+    function dayKey(iso) {
+      if (!iso) return 'No date';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    function weekKey(iso) {
+      if (!iso) return 'No date';
+      const d   = new Date(iso);
+      const day = d.getDay(); // 0=Sun
+      const mon = new Date(d); mon.setDate(d.getDate() - ((day + 6) % 7));
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const fmt = dt => dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const yr  = sun.getFullYear();
+      return `Week of ${fmt(mon)} – ${fmt(sun)}, ${yr}`;
+    }
+
+    function monthKey(iso) {
+      if (!iso) return 'No date';
+      return new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+
+    // Sort key so newest appears first within a date group
+    function dateSortVal(iso) {
+      return iso ? new Date(iso).getTime() : 0;
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+    function typeLabel(type) {
+      return { announcement: 'Announcement', assignment: 'Assignment Due', event: 'Event' }[type] || type;
+    }
+
+    function renderItem(item) {
+      const badgeCls = `badge-${item.type}`;
+      const borderCls = `item-${item.type}`;
+      const dateStr = fmtShort(item.date);
+      const rel     = relativeDate(item.date);
+      const link    = item.html_url ? `href="${item.html_url}" target="_blank"` : '';
+
+      // Announcement body (collapsible)
+      const bodyHtml = item.body
+        ? `<div class="mt-1">
+             <button onclick="toggleBody(this)"
+                     class="text-xs text-blue-500 hover:underline">Show message</button>
+             <div class="announcement-body mt-2 text-sm text-slate-600 leading-relaxed prose max-w-none">
+               ${item.body}
+             </div>
+           </div>`
+        : '';
+
+      return `<div class="px-6 py-4 flex gap-4 hover:bg-slate-50 transition-colors border-b border-slate-50 ${borderCls}">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold ${badgeCls}">
+                      ${typeLabel(item.type)}
+                    </span>
+                    <span class="text-xs text-slate-400">${item.course_name}</span>
+                  </div>
+                  <a ${link} class="font-medium text-slate-800 hover:text-blue-600 hover:underline text-sm">
+                    ${item.title}
+                  </a>
+                  ${bodyHtml}
+                </div>
+                <div class="text-right shrink-0 text-xs text-slate-400 pt-0.5 min-w-[80px]">
+                  <div class="font-medium text-slate-600">${rel}</div>
+                  <div>${dateStr}</div>
+                </div>
+              </div>`;
+    }
+
+    function toggleBody(btn) {
+      const body = btn.nextElementSibling;
+      const open = body.classList.toggle('open');
+      btn.textContent = open ? 'Hide message' : 'Show message';
+    }
+
+    // ── Group + render ────────────────────────────────────────────────────────
+    function render() {
+      const items = typeFilter === 'all'
+        ? allItems
+        : allItems.filter(i => i.type === typeFilter);
+
+      if (!items.length) {
+        document.getElementById('feed-list').innerHTML = '';
+        document.getElementById('empty-state').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('empty-state').classList.add('hidden');
+
+      // Build groups
+      const groups = new Map(); // key → [items]
+      for (const item of items) {
+        let key;
+        if (groupBy === 'class') {
+          key = item.course_name || 'Other';
+        } else if (dateGroup === 'days') {
+          key = dayKey(item.date);
+        } else if (dateGroup === 'weeks') {
+          key = weekKey(item.date);
+        } else {
+          key = monthKey(item.date);
+        }
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      }
+
+      // Sort group keys
+      let sortedKeys;
+      if (groupBy === 'class') {
+        sortedKeys = [...groups.keys()].sort();
+      } else {
+        // Sort by the earliest date in each group, newest first
+        sortedKeys = [...groups.keys()].sort((a, b) => {
+          const maxA = Math.max(...groups.get(a).map(i => dateSortVal(i.date)));
+          const maxB = Math.max(...groups.get(b).map(i => dateSortVal(i.date)));
+          return maxB - maxA;
+        });
+      }
+
+      let html = '';
+      for (const key of sortedKeys) {
+        const groupItems = groups.get(key);
+        html += `<div class="group-header">${key} <span class="font-normal normal-case tracking-normal text-slate-400 ml-1">${groupItems.length} item${groupItems.length !== 1 ? 's' : ''}</span></div>`;
+        // Within each group, sort by date newest first
+        groupItems.sort((a, b) => dateSortVal(b.date) - dateSortVal(a.date));
+        html += groupItems.map(renderItem).join('');
+      }
+
+      document.getElementById('feed-list').innerHTML = html;
+      document.getElementById('feed-subtitle').textContent =
+        `${items.length} item${items.length !== 1 ? 's' : ''} · grouped by ${groupBy === 'class' ? 'class' : dateGroup}`;
+    }
+
+    // ── Controls ──────────────────────────────────────────────────────────────
+    function setGroupBy(mode) {
+      groupBy = mode;
+      document.getElementById('btn-by-class').className = `toggle-btn ${mode === 'class' ? 'toggle-on' : 'toggle-off'}`;
+      document.getElementById('btn-by-date').className  = `toggle-btn ${mode === 'date'  ? 'toggle-on' : 'toggle-off'}`;
+      document.getElementById('date-sub').classList.toggle('hidden', mode !== 'date');
+      render();
+    }
+
+    function setDateGroup(sub) {
+      dateGroup = sub;
+      ['days','weeks','months'].forEach(s => {
+        document.getElementById(`btn-${s}`).className = `sub-btn ${s === sub ? 'sub-on' : 'sub-off'}`;
+      });
+      render();
+    }
+
+    function setTypeFilter(type) {
+      typeFilter = type;
+      ['all','announcement','assignment','event'].forEach(t => {
+        document.getElementById(`flt-${t}`).className = `sub-btn ${t === type ? 'sub-on' : 'sub-off'}`;
+      });
+      render();
+    }
+
+    // ── Load data ─────────────────────────────────────────────────────────────
+    async function load() {
+      try {
+        const res  = await fetch('/api/activity');
+        const data = await res.json();
+
+        if (data.error) {
+          show('error');
+          document.getElementById('error-message').textContent = data.message;
+          return;
+        }
+
+        allItems = data.items || [];
+        show('content');
+        render();
+
+      } catch (err) {
+        show('error');
+        document.getElementById('error-message').textContent = 'Could not reach the server.';
+        console.error(err);
+      }
+    }
+
+    function show(panel) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error-state').classList.add('hidden');
+      document.getElementById('content').classList.add('hidden');
+      document.getElementById(panel === 'content' ? 'content' : panel + '-state').classList.remove('hidden');
+    }
+
+    load();
+  </script>
+</body>
+</html>

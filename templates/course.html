@@ -66,7 +66,10 @@
       <div class="w-8 h-8 bg-yellow-400 rounded-md flex items-center justify-center font-bold text-blue-900 text-xs tracking-tight">BC</div>
       <span class="font-semibold text-base">Broward Student Portal</span>
     </div>
-    <a href="/" class="text-sm text-blue-300 hover:text-white transition-colors">← Back to Dashboard</a>
+    <div class="flex items-center gap-4">
+      <a href="/activity" class="text-sm text-blue-300 hover:text-white transition-colors">Activity</a>
+      <a href="/" class="text-sm text-blue-300 hover:text-white transition-colors">← Dashboard</a>
+    </div>
   </nav>
 
   <main class="max-w-6xl mx-auto px-6 py-8 space-y-6">
@@ -163,6 +166,16 @@
         </div>
       </div>
 
+      <!-- Feedback / comments panel — shown when a Feedback cell is clicked -->
+      <div id="comments-panel" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 id="comments-title" class="text-base font-semibold text-slate-800"></h3>
+          <button onclick="hideComments()"
+                  class="text-slate-400 hover:text-slate-600 text-xl leading-none transition-colors">✕</button>
+        </div>
+        <div id="comments-list" class="space-y-4"></div>
+      </div>
+
     </div><!-- /content -->
   </main>
 
@@ -170,6 +183,7 @@
     const COURSE_ID = {{ course_id }};
     let assignGridApi;
     let activeGroup = 'all';
+    let assignmentsData = [];
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     function scoreColor(s) {
@@ -233,6 +247,29 @@
               </div>`;
     }
 
+    function renderSubmitted(p) {
+      const { submitted_at, late, attempt } = p.data;
+      if (!submitted_at) return `<span class="text-slate-400 text-sm">—</span>`;
+      const dateStr = fmtDate(submitted_at);
+      const lateTag = late ? ` <span class="badge s-missing" style="font-size:10px;padding:1px 6px">Late</span>` : '';
+      const attemptStr = attempt > 1
+        ? `<span class="text-xs text-slate-400 block mt-0.5">Attempt ${attempt}</span>`
+        : '';
+      return `<div class="flex flex-col justify-center h-full leading-tight">
+                <span class="text-sm text-slate-700">${dateStr}${lateTag}</span>
+                ${attemptStr}
+              </div>`;
+    }
+
+    function renderFeedback(p) {
+      const n = (p.data.comments || []).length;
+      if (!n) return `<span class="text-slate-300 text-sm">—</span>`;
+      return `<button onclick="event.stopPropagation();showComments(${p.data.id})"
+                      class="badge s-submitted cursor-pointer hover:bg-blue-200 transition-colors">
+                ${n} comment${n !== 1 ? 's' : ''}
+              </button>`;
+    }
+
     function renderStatus(p) {
       const s = p.value;
       const missing = s === 'unsubmitted' && isPast(p.data.due_at);
@@ -272,8 +309,35 @@
       }
     }
 
+    // ── Comments panel ────────────────────────────────────────────────────────
+    function showComments(assignmentId) {
+      const a = assignmentsData.find(x => x.id === assignmentId);
+      if (!a) return;
+      document.getElementById('comments-title').textContent = a.name;
+      const list = document.getElementById('comments-list');
+      if (!a.comments.length) {
+        list.innerHTML = `<p class="text-sm text-slate-400">No comments.</p>`;
+      } else {
+        list.innerHTML = a.comments.map(c => `
+          <div class="border-l-2 border-blue-200 pl-4 py-1">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-sm font-medium text-slate-700">${c.author}</span>
+              <span class="text-xs text-slate-400">${fmtDate(c.created_at) || ''}</span>
+            </div>
+            <p class="text-sm text-slate-600 whitespace-pre-wrap">${c.body}</p>
+          </div>`).join('');
+      }
+      document.getElementById('comments-panel').classList.remove('hidden');
+      document.getElementById('comments-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideComments() {
+      document.getElementById('comments-panel').classList.add('hidden');
+    }
+
     // ── Assignment grid ────────────────────────────────────────────────────────
     function initAssignGrid(assignments) {
+      assignmentsData = assignments;
       const colDefs = [
         {
           field: 'name',
@@ -330,6 +394,27 @@
           width: 145,
           cellRenderer: renderStatus,
           sortable: true,
+        },
+        {
+          field: 'submitted_at',
+          headerName: 'Submitted',
+          width: 160,
+          cellRenderer: renderSubmitted,
+          sortable: true,
+          comparator: (a, b) => {
+            if (!a && !b) return 0;
+            if (!a) return 1;
+            if (!b) return -1;
+            return new Date(a) - new Date(b);
+          },
+        },
+        {
+          field: 'comments',
+          headerName: 'Feedback',
+          width: 130,
+          cellRenderer: renderFeedback,
+          sortable: true,
+          valueGetter: p => (p.data.comments || []).length,
         },
       ];
 

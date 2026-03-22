@@ -281,7 +281,7 @@ def api_course(course_id: int):
 
 @app.route("/api/course/<int:course_id>/assignments")
 def api_course_assignments(course_id: int):
-    """Return assignments with submission data for a course."""
+    """Return assignments with full submission data (including comments) for a course."""
     try:
         client = CanvasClient(BASE_URL, ACCESS_TOKEN)
 
@@ -294,12 +294,41 @@ def api_course_assignments(course_id: int):
             "order_by": "due_at",
         })
 
+        # Fetch full submission objects (with teacher comments) separately,
+        # then merge into assignments by assignment_id.
+        raw_subs = client.get_student_submissions(course_id, params={
+            "include[]": "submission_comments",
+        })
+        sub_map = {s["assignment_id"]: s for s in raw_subs}
+
         formatted = []
         for a in assignments:
-            sub = a.get("submission") or {}
+            sub = sub_map.get(a["id"]) or a.get("submission") or {}
             score = sub.get("score")
             pts = a.get("points_possible") or 0
             pct = round(score / pts * 100, 1) if (score is not None and pts > 0) else None
+
+            comments = [
+                {
+                    "author": c.get("author_name", ""),
+                    "body": c.get("comment", ""),
+                    "created_at": c.get("created_at"),
+                }
+                for c in (sub.get("submission_comments") or [])
+            ]
+
+            sub_type_map = {
+                "online_text_entry": "Text",
+                "online_upload": "File Upload",
+                "online_quiz": "Quiz",
+                "discussion_topic": "Discussion",
+                "media_recording": "Media",
+                "external_tool": "External Tool",
+                "on_paper": "On Paper",
+            }
+            raw_type = sub.get("submission_type") or ""
+            sub_type = sub_type_map.get(raw_type, raw_type.replace("_", " ").title() if raw_type else None)
+
             formatted.append({
                 "id": a["id"],
                 "name": a.get("name", ""),
@@ -311,10 +340,92 @@ def api_course_assignments(course_id: int):
                 "pct": pct,
                 "status": sub.get("workflow_state", "unsubmitted"),
                 "submitted_at": sub.get("submitted_at"),
+                "late": sub.get("late", False),
+                "attempt": sub.get("attempt"),
+                "submission_type": sub_type,
+                "comments": comments,
                 "html_url": a.get("html_url", ""),
             })
 
         return jsonify({"assignments": formatted})
+
+    except CanvasAuthError:
+        return jsonify({"error": "auth", "message": "Invalid or expired API token."}), 401
+    except CanvasAPIError as exc:
+        return jsonify({"error": "api", "message": str(exc)}), 500
+    except Exception as exc:  # pylint: disable=broad-except
+        return jsonify({"error": "unknown", "message": str(exc)}), 500
+
+
+@app.route("/activity")
+def activity():
+    return render_template("activity.html")
+
+
+@app.route("/api/activity")
+def api_activity():
+    """Return announcements and upcoming events for all current courses."""
+    try:
+        client = CanvasClient(BASE_URL, ACCESS_TOKEN)
+
+        courses = client.get_courses(params={
+            "enrollment_type": "student",
+            "enrollment_state": "active",
+            "per_page": 100,
+        })
+        current = [c for c in courses if c.get("enrollment_term_id") == CURRENT_TERM_ID]
+        course_map = {c["id"]: c["name"] for c in current}
+        context_codes = [f"course_{c['id']}" for c in current]
+
+        items = []
+
+        # Announcements
+        try:
+            announcements = client.get_announcements(context_codes)
+        except CanvasAPIError:
+            announcements = []
+
+        for ann in announcements:
+            ccode = ann.get("context_code", "")
+            cid = int(ccode.replace("course_", "")) if ccode.startswith("course_") else None
+            items.append({
+                "type": "announcement",
+                "id": ann["id"],
+                "title": ann.get("title", ""),
+                "body": ann.get("message", ""),
+                "course_id": cid,
+                "course_name": course_map.get(cid, ccode),
+                "date": ann.get("posted_at"),
+                "html_url": ann.get("html_url", ""),
+            })
+
+        # Upcoming events (assignment due dates + calendar events)
+        try:
+            events = client.get_upcoming_events()
+        except CanvasAPIError:
+            events = []
+
+        for ev in events:
+            ccode = ev.get("context_code", "")
+            cid = int(ccode.replace("course_", "")) if ccode.startswith("course_") else None
+            is_assignment = bool(ev.get("assignment"))
+            items.append({
+                "type": "assignment" if is_assignment else "event",
+                "id": ev.get("id"),
+                "title": ev.get("title", ""),
+                "body": "",
+                "course_id": cid,
+                "course_name": ev.get("context_name") or course_map.get(cid, ccode or ""),
+                "date": ev.get("start_at"),
+                "html_url": ev.get("html_url", ""),
+            })
+
+        items.sort(key=lambda x: x["date"] or "9999", reverse=True)
+
+        return jsonify({
+            "items": items,
+            "courses": [{"id": c["id"], "name": c["name"]} for c in current],
+        })
 
     except CanvasAuthError:
         return jsonify({"error": "auth", "message": "Invalid or expired API token."}), 401
