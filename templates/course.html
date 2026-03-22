@@ -25,12 +25,10 @@
       --ag-row-hover-color: #f0f9ff;
       --ag-border-color: #e2e8f0;
       --ag-cell-horizontal-padding: 16px;
-      --ag-floating-filter-height: 36px;
     }
     .ag-theme-alpine .ag-header-cell-label {
       font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
     }
-    .ag-theme-alpine .ag-floating-filter-input { font-size: 13px; }
 
     /* Status badges */
     .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:11px; font-weight:600; white-space:nowrap; }
@@ -284,16 +282,12 @@
           minWidth: 200,
           cellRenderer: renderName,
           sortable: true,
-          filter: 'agTextColumnFilter',
-          floatingFilter: true,
         },
         {
           field: 'group',
           headerName: 'Category',
           width: 170,
           sortable: true,
-          filter: 'agTextColumnFilter',
-          floatingFilter: true,
         },
         {
           field: 'due_at',
@@ -302,8 +296,6 @@
           cellRenderer: renderDue,
           sortable: true,
           sort: 'desc',
-          filter: 'agDateColumnFilter',
-          floatingFilter: true,
           comparator: (a, b) => {
             if (!a && !b) return 0;
             if (!a) return 1;
@@ -316,8 +308,6 @@
           headerName: 'Pts',
           width: 80,
           sortable: true,
-          filter: 'agNumberColumnFilter',
-          floatingFilter: true,
           valueFormatter: p => p.value ?? '—',
         },
         {
@@ -326,8 +316,6 @@
           cellRenderer: renderScore,
           sortable: true,
           valueGetter: p => p.data.score,
-          filter: 'agNumberColumnFilter',
-          floatingFilter: true,
         },
         {
           field: 'pct',
@@ -335,8 +323,6 @@
           width: 180,
           cellRenderer: renderPct,
           sortable: true,
-          filter: 'agNumberColumnFilter',
-          floatingFilter: true,
         },
         {
           field: 'status',
@@ -344,8 +330,6 @@
           width: 145,
           cellRenderer: renderStatus,
           sortable: true,
-          filter: 'agTextColumnFilter',
-          floatingFilter: true,
         },
       ];
 
@@ -357,7 +341,6 @@
           defaultColDef: { resizable: true },
           rowHeight: 56,
           headerHeight: 44,
-          floatingFiltersHeight: 36,
           animateRows: true,
           domLayout: 'autoHeight',
           suppressCellFocus: true,
