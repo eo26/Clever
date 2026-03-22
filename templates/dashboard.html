@@ -297,7 +297,6 @@
           width: 120,
           cellRenderer: renderMissing,
           sortable: true,
-          sort: 'desc',
         },
         {
           headerName: '',
@@ -365,12 +364,9 @@
 
         // Profile detail chips
         const chipDefs = [
-          student.login_id    && { icon: '🪪', label: student.login_id },
-          student.sis_user_id && student.sis_user_id !== student.login_id
-                              && { icon: '#', label: student.sis_user_id },
-          student.time_zone   && { icon: '🕐', label: student.time_zone.replace(/_/g, ' ') },
-          student.locale      && { icon: '🌐', label: student.locale.toUpperCase() },
-          student.bio         && { icon: '📝', label: student.bio },
+          student.time_zone && { icon: '🕐', label: student.time_zone.replace(/_/g, ' ') },
+          student.locale    && { icon: '🌐', label: student.locale.toUpperCase() },
+          student.bio       && { icon: '📝', label: student.bio },
         ].filter(Boolean);
         document.getElementById('profile-chips').innerHTML = chipDefs.map(c =>
           `<span class="inline-flex items-center gap-1 text-xs text-slate-500 bg-slate-100
