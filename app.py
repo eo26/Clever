@@ -456,7 +456,7 @@ def api_terms():
                 "course_code": c.get("course_code", ""),
             })
 
-        result = sorted(terms.values(), key=lambda t: t["id"], reverse=True)
+        result = sorted(terms.values(), key=lambda t: t["id"] or 0, reverse=True)
         return jsonify({
             "current_term_id": CURRENT_TERM_ID,
             "terms": result,
