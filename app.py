@@ -435,5 +435,39 @@ def api_activity():
         return jsonify({"error": "unknown", "message": str(exc)}), 500
 
 
+@app.route("/api/terms")
+def api_terms():
+    """Debug route: list all courses with their term IDs."""
+    try:
+        client = CanvasClient(BASE_URL, ACCESS_TOKEN)
+        courses = client.get_courses(
+            params={"per_page": 100, "include[]": "term"}
+        )
+        terms = {}
+        for c in courses:
+            tid = c.get("enrollment_term_id")
+            term = c.get("term", {})
+            tname = term.get("name", "Unknown")
+            if tid not in terms:
+                terms[tid] = {"id": tid, "name": tname, "courses": []}
+            terms[tid]["courses"].append({
+                "id": c["id"],
+                "name": c.get("name", ""),
+                "course_code": c.get("course_code", ""),
+            })
+
+        result = sorted(terms.values(), key=lambda t: t["id"], reverse=True)
+        return jsonify({
+            "current_term_id": CURRENT_TERM_ID,
+            "terms": result,
+        })
+
+    except CanvasAuthError:
+        return jsonify({"error": "auth",
+                        "message": "Invalid or expired API token."}), 401
+    except CanvasAPIError as exc:
+        return jsonify({"error": "api", "message": str(exc)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
