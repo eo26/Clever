@@ -523,7 +523,7 @@ def api_terms():
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "hash":
+    if "hash" in sys.argv:
         phrase = input("Enter passphrase to hash: ")
         print(f"\nSITE_PASSPHRASE_HASH={generate_password_hash(phrase)}")
         print("\nAdd the line above to your .env file.")
