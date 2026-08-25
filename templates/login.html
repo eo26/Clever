@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Student Portal</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+
+  <div class="w-full max-w-sm px-6">
+    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8">
+
+      <!-- Logo -->
+      <div class="flex flex-col items-center mb-8">
+        <div class="w-14 h-14 bg-blue-900 rounded-xl flex items-center justify-center font-bold text-yellow-400 text-lg tracking-tight mb-4">BC</div>
+        <h1 class="text-xl font-bold text-slate-800">Student Portal</h1>
+        <p class="text-sm text-slate-400 mt-1">Enter the passphrase to continue</p>
+      </div>
+
+      <!-- Error -->
+      {% if error %}
+      <div class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6 text-center">
+        <p class="text-sm font-medium text-red-700">{{ error }}</p>
+      </div>
+      {% endif %}
+
+      <!-- Form -->
+      <form method="POST" action="/login">
+        <label for="passphrase" class="block text-sm font-medium text-slate-600 mb-2">Passphrase</label>
+        <input id="passphrase"
+               name="passphrase"
+               type="password"
+               required
+               autofocus
+               placeholder="Enter passphrase"
+               class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm
+                      focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent
+                      bg-slate-50 placeholder-slate-300" />
+        <button type="submit"
+                class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold
+                       rounded-xl px-4 py-3 text-sm transition-colors">
+          Sign In
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+</body>
+</html>

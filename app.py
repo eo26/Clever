@@ -10,7 +10,12 @@ Usage:
 
 import os
 import re
-from flask import Flask, jsonify, render_template
+from functools import wraps
+from flask import (
+    Flask, jsonify, render_template, request, redirect,
+    url_for, session,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
 from dotenv import load_dotenv
 from canvas_client import CanvasClient, CanvasAPIError, CanvasAuthError
 
@@ -20,6 +25,20 @@ BASE_URL = "https://browardschools.instructure.com"
 CURRENT_TERM_ID = 3133
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-key-change-me")
+app.permanent_session_lifetime = 60 * 60 * 24 * 30  # 30 days
+
+SITE_PASSPHRASE_HASH = os.environ.get("SITE_PASSPHRASE_HASH", "")
+
+
+def login_required(f):
+    """Redirect to login page if user is not authenticated."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("authenticated"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
 
 
 def _parse_period(section_name: str) -> int:
@@ -45,12 +64,37 @@ def _score_to_grade(score: float) -> str:
     return 'F'
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if session.get("authenticated"):
+        return redirect(url_for("dashboard"))
+    error = None
+    if request.method == "POST":
+        passphrase = request.form.get("passphrase", "")
+        if SITE_PASSPHRASE_HASH and check_password_hash(
+            SITE_PASSPHRASE_HASH, passphrase
+        ):
+            session["authenticated"] = True
+            session.permanent = True
+            return redirect(url_for("dashboard"))
+        error = "Incorrect passphrase."
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_required
 def dashboard():
     return render_template("dashboard.html")
 
 
 @app.route("/api/dashboard")
+@login_required
 def api_dashboard():
     """Return student profile + current courses with grades."""
     try:
@@ -171,6 +215,7 @@ def api_dashboard():
 
 
 @app.route("/api/todo")
+@login_required
 def api_todo():
     """Return upcoming to-do items (assignments needing submission) across all courses."""
     try:
@@ -203,16 +248,19 @@ def api_todo():
 
 
 @app.route("/course/<int:course_id>")
+@login_required
 def course_detail(course_id: int):
     return render_template("course.html", course_id=course_id)
 
 
 @app.route("/course/<int:course_id>/classmates")
+@login_required
 def course_classmates(course_id: int):
     return render_template("classmates.html", course_id=course_id)
 
 
 @app.route("/api/course/<int:course_id>")
+@login_required
 def api_course(course_id: int):
     """Return course info and classmates in the student's section."""
     try:
@@ -280,6 +328,7 @@ def api_course(course_id: int):
 
 
 @app.route("/api/course/<int:course_id>/assignments")
+@login_required
 def api_course_assignments(course_id: int):
     """Return assignments with full submission data (including comments) for a course."""
     try:
@@ -358,11 +407,13 @@ def api_course_assignments(course_id: int):
 
 
 @app.route("/activity")
+@login_required
 def activity():
     return render_template("activity.html")
 
 
 @app.route("/api/activity")
+@login_required
 def api_activity():
     """Return announcements and upcoming events for all current courses."""
     try:
@@ -436,6 +487,7 @@ def api_activity():
 
 
 @app.route("/api/terms")
+@login_required
 def api_terms():
     """Debug route: list all courses with their term IDs."""
     try:
@@ -470,4 +522,10 @@ def api_terms():
 
 
 if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "hash":
+        phrase = input("Enter passphrase to hash: ")
+        print(f"\nSITE_PASSPHRASE_HASH={generate_password_hash(phrase)}")
+        print("\nAdd the line above to your .env file.")
+        sys.exit(0)
     app.run(debug=True, port=5000)
